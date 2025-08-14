@@ -32,14 +32,31 @@ const UserDashboard = () => {
 
   useEffect(() => {
     if (socket) {
-      socket.on('appointment-updated', handleAppointmentUpdate)
-      socket.on('appointment-status-updated', handleAppointmentStatusUpdate)
+      console.log('Setting up socket listeners for UserDashboard')
+      
+      socket.on('appointment-updated', (data) => {
+        console.log('Received appointment-updated event:', data)
+        handleAppointmentUpdate(data)
+      })
+      
+      socket.on('appointment-status-updated', (data) => {
+        console.log('Received appointment-status-updated event:', data)
+        handleAppointmentStatusUpdate(data)
+      })
+      
+      // Join patient room for real-time updates
+      if (user && user.id) {
+        socket.emit('join-patient-room', user.id)
+        console.log('Joined patient room:', user.id)
+      }
+      
       return () => {
+        console.log('Cleaning up socket listeners')
         socket.off('appointment-updated', handleAppointmentUpdate)
         socket.off('appointment-status-updated', handleAppointmentStatusUpdate)
       }
     }
-  }, [socket])
+  }, [socket, user])
 
   // Update current time every second
   useEffect(() => {
@@ -91,12 +108,16 @@ const UserDashboard = () => {
   const handleAppointmentStatusUpdate = (data) => {
     console.log('Received appointment status update:', data)
     
-    // Update appointments list in real-time
-    setAppointments(prev => prev.map(appointment => 
-      appointment._id === data.appointmentId 
-        ? { ...appointment, status: data.status }
-        : appointment
-    ))
+    // Update appointments list in real-time IMMEDIATELY
+    setAppointments(prev => {
+      const updated = prev.map(appointment => 
+        appointment._id === data.appointmentId 
+          ? { ...appointment, status: data.status }
+          : appointment
+      )
+      console.log('Updated appointments:', updated)
+      return updated
+    })
     
     // Update current appointment if it matches
     if (currentAppointment && currentAppointment._id === data.appointmentId) {
@@ -107,7 +128,7 @@ const UserDashboard = () => {
     setUpdatedAppointmentId(data.appointmentId)
     setTimeout(() => setUpdatedAppointmentId(null), 3000) // Clear after 3 seconds
     
-    // Show toast notification
+    // Show toast notification immediately
     const statusText = data.status === 'waiting' ? 'Waiting' :
                       data.status === 'in-progress' ? 'In Consultation' :
                       data.status === 'completed' ? 'Completed' : data.status
@@ -289,13 +310,25 @@ const UserDashboard = () => {
                           {/* Live Tracking Status */}
             <div className="space-y-8">
               {isConnected && (
-                <div className="flex items-center justify-center mb-4">
+                <div className="flex items-center justify-center mb-4 space-x-4">
                   <div className="inline-flex items-center space-x-2 bg-emerald-500/20 backdrop-blur-sm text-emerald-300 px-4 py-2 rounded-full border border-emerald-500/30">
                     <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
                     <span className="text-xs font-medium" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
                       Real-time updates active
                     </span>
                   </div>
+                  <button
+                    onClick={() => {
+                      console.log('Manual refresh triggered')
+                      fetchAppointments()
+                      fetchCurrentStatus()
+                    }}
+                    className="inline-flex items-center space-x-2 bg-blue-500/20 backdrop-blur-sm text-blue-300 px-4 py-2 rounded-full border border-blue-500/30 hover:bg-blue-500/30 transition-colors"
+                  >
+                    <span className="text-xs font-medium" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+                      Refresh Data
+                    </span>
+                  </button>
                 </div>
               )}
                 {appointments.length > 0 ? (

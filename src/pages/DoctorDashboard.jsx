@@ -40,6 +40,7 @@ const DoctorDashboard = () => {
     waitingPatients: 0
   })
   const [lastUpdateTime, setLastUpdateTime] = useState(null)
+  const [currentDoctorRoom, setCurrentDoctorRoom] = useState(null)
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const { socket, isConnected, emitAppointmentUpdate } = useSocket()
@@ -57,8 +58,21 @@ const DoctorDashboard = () => {
   useEffect(() => {
     if (selectedDoctor) {
       fetchAppointments()
+      
+      // Leave previous doctor room if exists
+      if (socket && currentDoctorRoom && currentDoctorRoom !== selectedDoctor._id) {
+        socket.emit('leave-doctor-room', currentDoctorRoom)
+        console.log('Left doctor room:', currentDoctorRoom)
+      }
+      
+      // Join doctor room for real-time updates
+      if (socket && selectedDoctor._id) {
+        socket.emit('join-doctor-room', selectedDoctor._id)
+        setCurrentDoctorRoom(selectedDoctor._id)
+        console.log('Joined doctor room:', selectedDoctor._id)
+      }
     }
-  }, [selectedDoctor])
+  }, [selectedDoctor, socket])
 
   // Update current time every second
   useEffect(() => {
@@ -149,6 +163,8 @@ const DoctorDashboard = () => {
 
   const updateAppointmentStatus = async (appointmentId, newStatus) => {
     try {
+      console.log('Updating appointment status:', { appointmentId, newStatus });
+      
       // Update appointment status in backend
       await appointmentsAPI.updateAppointmentStatus(appointmentId, newStatus)
       
@@ -183,6 +199,11 @@ const DoctorDashboard = () => {
                           newStatus === 'in-progress' ? prev.waitingPatients - 1 : prev.waitingPatients
         }))
       }
+      
+      // Refresh data from server to ensure consistency
+      setTimeout(() => {
+        fetchAppointments()
+      }, 500)
       
       toast.success(`Appointment status updated to ${newStatus}`)
       
@@ -273,10 +294,10 @@ const DoctorDashboard = () => {
               }}>
                 <div className="text-center mb-8">
                   <div className="flex items-center justify-center space-x-4 mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg" style={{
-                      boxShadow: '0 8px 25px rgba(16, 185, 129, 0.4)'
+                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg" style={{
+                      boxShadow: '0 8px 25px rgba(255,255,255,0.4)'
                     }}>
-                      <Stethoscope className="w-6 h-6 text-white" />
+                      <Stethoscope className="w-6 h-6 text-black" />
                     </div>
                     <h2 className="text-3xl font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Select Doctor</h2>
                   </div>
@@ -296,9 +317,7 @@ const DoctorDashboard = () => {
                         boxShadow: '0 20px 40px rgba(16, 185, 129, 0.5), 0 0 0 1px rgba(16, 185, 129, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
                       }}
                     >
-                      <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/30 shadow-lg">
-                        <Stethoscope className="w-6 h-6 text-white" />
-                      </div>
+                      
                       <span className="font-semibold">Select Doctor</span>
                       <ChevronDown className="w-6 h-6 transition-all duration-300" />
                     </Button>
@@ -459,6 +478,24 @@ const DoctorDashboard = () => {
                         </span>
                       </div>
                     )}
+                    <button
+                      onClick={() => {
+                        console.log('Testing socket emission')
+                        emitAppointmentUpdate({
+                          appointmentId: appointments[0]?._id || 'test',
+                          status: 'in-progress',
+                          doctorId: selectedDoctor._id,
+                          doctorName: selectedDoctor.name,
+                          timestamp: new Date().toISOString()
+                        })
+                        setLastUpdateTime(new Date())
+                      }}
+                      className="inline-flex items-center space-x-2 bg-blue-500/20 backdrop-blur-sm text-blue-300 px-3 py-2 rounded-lg border border-blue-500/30 hover:bg-blue-500/30 transition-colors"
+                    >
+                      <span className="text-xs font-medium" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+                        Test Socket
+                      </span>
+                    </button>
                     <Button
                       onClick={() => setSelectedDoctor(null)}
                       className="bg-gradient-to-r from-gray-600 to-gray-700 text-white hover:from-gray-700 hover:to-gray-800 px-4 py-3 rounded-xl font-medium shadow-xl transition-all duration-300 flex items-center space-x-2 border border-gray-500/30 hover:border-gray-400/50"

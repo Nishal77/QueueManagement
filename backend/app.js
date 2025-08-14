@@ -124,6 +124,12 @@ io.on('connection', (socket) => {
     console.log(`Socket ${socket.id} joined doctor room: ${doctorId}`);
   });
 
+  // Leave doctor room
+  socket.on('leave-doctor-room', (doctorId) => {
+    socket.leave(`doctor-${doctorId}`);
+    console.log(`Socket ${socket.id} left doctor room: ${doctorId}`);
+  });
+
   // Join patient room for real-time updates
   socket.on('join-patient-room', (patientId) => {
     socket.join(`patient-${patientId}`);
@@ -133,10 +139,12 @@ io.on('connection', (socket) => {
   // Handle appointment status updates
   socket.on('appointment-status-updated', (data) => {
     // Broadcast to doctor room
-    socket.to(`doctor-${data.doctorId}`).emit('appointment-updated', data);
+    socket.to(`doctor-${data.doctorId}`).emit('appointment-status-updated', data);
     
     // Broadcast to patient room
-    socket.to(`patient-${data.patientId}`).emit('appointment-updated', data);
+    socket.to(`patient-${data.patientId}`).emit('appointment-status-updated', data);
+    
+    console.log(`Socket event broadcasted: appointment-status-updated to doctor-${data.doctorId} and patient-${data.patientId}`);
   });
 
   // Handle queue updates

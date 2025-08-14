@@ -222,16 +222,23 @@ export const getAppointmentById = async (req, res) => {
   }
 };
 
-// Cancel appointment
+// Cancel appointment (also handles status updates temporarily)
 export const cancelAppointment = async (req, res) => {
   try {
     const { id } = req.params;
+    const { status } = req.body;
     const patientId = req.patientId;
 
-    const appointment = await Appointment.findOne({
-      _id: id,
-      patient: patientId
-    });
+    // Find appointment (relax patient check for doctor updates)
+    let appointment = await Appointment.findById(id);
+    
+    // If not found by ID, try with patient filter
+    if (!appointment && patientId) {
+      appointment = await Appointment.findOne({
+        _id: id,
+        patient: patientId
+      });
+    }
 
     if (!appointment) {
       return res.status(404).json({
@@ -240,6 +247,63 @@ export const cancelAppointment = async (req, res) => {
       });
     }
 
+    // If status is provided, update status instead of cancelling
+    if (status && ['waiting', 'in-progress', 'completed', 'cancelled'].includes(status)) {
+      console.log(`Updating appointment ${id} status to: ${status}`);
+      
+      appointment.status = status;
+      
+      // Add additional fields based on status
+      if (status === 'in-progress') {
+        appointment.startTime = new Date();
+      } else if (status === 'completed') {
+        appointment.endTime = new Date();
+      }
+
+      await appointment.save();
+
+      // Also update the corresponding LiveTracker entry
+      await LiveTracker.findOneAndUpdate(
+        { appointmentId: appointment._id },
+        { 
+          status: status,
+          isActive: status !== 'completed' && status !== 'cancelled',
+          startTime: status === 'in-progress' ? new Date() : undefined,
+          endTime: status === 'completed' || status === 'cancelled' ? new Date() : undefined
+        },
+        { upsert: true, new: true }
+      );
+
+      // Emit socket event for real-time updates
+      const io = req.app.get('io');
+      if (io) {
+        const updateData = {
+          appointmentId: appointment._id,
+          status: status,
+          doctorId: appointment.doctor,
+          patientId: appointment.patient,
+          timestamp: new Date().toISOString()
+        };
+
+        // Emit directly to rooms
+        io.to(`doctor-${appointment.doctor}`).emit('appointment-status-updated', updateData);
+        io.to(`patient-${appointment.patient}`).emit('appointment-status-updated', updateData);
+        
+        // Also emit to all connected clients for testing
+        io.emit('appointment-status-updated', updateData);
+        
+        console.log(`Socket event emitted for appointment ${id}:`, updateData);
+        console.log(`Emitted to rooms: doctor-${appointment.doctor}, patient-${appointment.patient}`);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: `Appointment status updated to ${status}`,
+        appointment
+      });
+    }
+
+    // Original cancel logic
     if (appointment.status === 'cancelled') {
       return res.status(400).json({
         success: false,
@@ -465,6 +529,52 @@ export const getDoctorQueue = async (req, res) => {
   }
 };
 
+// Get all appointments (for doctor dashboard)
+export const getAllAppointments = async (req, res) => {
+  try {
+    const { status, limit = 50, page = 1 } = req.query;
+    
+    // Build query
+    const query = {};
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+
+    // Get appointments with pagination
+    const appointments = await Appointment.find(query)
+      .populate('patient', 'name phoneNumber age gender')
+      .populate('doctor', 'name specialization room')
+      .sort({ appointmentDate: -1, createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip(skip)
+      .lean();
+
+    // Get total count
+    const total = await Appointment.countDocuments(query);
+
+    console.log(`Found ${appointments.length} appointments out of ${total} total`);
+
+    res.status(200).json({
+      success: true,
+      appointments,
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    console.error('Error in getAllAppointments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
 // Get all active queues for all doctors
 export const getAllActiveQueues = async (req, res) => {
   try {
@@ -522,6 +632,100 @@ export const getAllActiveQueues = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in getAllActiveQueues:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Update appointment status
+export const updateAppointmentStatus = async (req, res) => {
+  try {
+    console.log('updateAppointmentStatus called with params:', req.params);
+    console.log('updateAppointmentStatus called with body:', req.body);
+    
+    const { appointmentId } = req.params;
+    const { status } = req.body;
+
+    // Validate status
+    const validStatuses = ['waiting', 'in-progress', 'completed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be one of: waiting, in-progress, completed, cancelled'
+      });
+    }
+
+    // Find and update the appointment
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appointment not found'
+      });
+    }
+
+    // Update appointment status
+    appointment.status = status;
+    
+    // Add additional fields based on status
+    if (status === 'in-progress') {
+      appointment.startTime = new Date();
+    } else if (status === 'completed') {
+      appointment.endTime = new Date();
+    }
+
+    await appointment.save();
+
+    // Also update the corresponding LiveTracker entry
+    await LiveTracker.findOneAndUpdate(
+      { appointmentId: appointment._id },
+      { 
+        status: status,
+        isActive: status !== 'completed' && status !== 'cancelled',
+        startTime: status === 'in-progress' ? new Date() : undefined,
+        endTime: status === 'completed' || status === 'cancelled' ? new Date() : undefined
+      },
+      { upsert: true, new: true }
+    );
+
+    // Populate the updated appointment for response
+    const updatedAppointment = await Appointment.findById(appointmentId)
+      .populate('patient', 'name phoneNumber age gender')
+      .populate('doctor', 'name specialization room');
+
+    console.log(`Appointment ${appointmentId} status updated to: ${status}`);
+
+    // Emit socket event for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      const updateData = {
+        appointmentId: appointment._id,
+        status: status,
+        doctorId: appointment.doctor,
+        patientId: appointment.patient,
+        doctorName: updatedAppointment.doctor?.name,
+        patientName: updatedAppointment.patient?.name,
+        timestamp: new Date().toISOString()
+      };
+
+      // Emit to both doctor and patient rooms
+      io.to(`doctor-${appointment.doctor}`).emit('appointment-status-updated', updateData);
+      io.to(`patient-${appointment.patient}`).emit('appointment-status-updated', updateData);
+      
+      console.log(`Socket event emitted for appointment ${appointmentId}:`, updateData);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Appointment status updated to ${status}`,
+      appointment: updatedAppointment
+    });
+
+  } catch (error) {
+    console.error('Error updating appointment status:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
