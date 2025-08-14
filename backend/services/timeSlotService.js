@@ -85,15 +85,21 @@ export const getNextQueueNumber = async (doctorId, date, Appointment) => {
     const startOfDay = moment(date).startOf('day');
     const endOfDay = moment(date).endOf('day');
 
+    console.log('Getting queue number for doctor:', doctorId, 'date:', date);
+
     const lastAppointment = await Appointment.findOne({
       doctor: doctorId,
       appointmentDate: {
         $gte: startOfDay.toDate(),
         $lte: endOfDay.toDate()
-      }
+      },
+      status: { $nin: ['cancelled'] } // Exclude cancelled appointments
     }).sort({ queueNumber: -1 });
 
-    return lastAppointment ? lastAppointment.queueNumber + 1 : 1;
+    const nextQueueNumber = lastAppointment ? lastAppointment.queueNumber + 1 : 1;
+    console.log('Next queue number:', nextQueueNumber);
+    
+    return nextQueueNumber;
   } catch (error) {
     console.error('Error getting next queue number:', error);
     return 1;

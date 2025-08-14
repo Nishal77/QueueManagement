@@ -5,13 +5,19 @@ import {
   getAppointmentById,
   cancelAppointment,
   getAvailableSlots,
-  getCurrentAppointmentStatus
+  getCurrentAppointmentStatus,
+  getLiveTrackingData,
+  getDoctorQueue,
+  getAllActiveQueues
 } from '../controllers/appointmentController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// All routes require authentication
+// Public routes (no authentication required)
+router.get('/all-queues', getAllActiveQueues);
+
+// All other routes require authentication
 router.use(authenticateToken);
 
 // Book new appointment
@@ -28,5 +34,11 @@ router.patch('/:id/cancel', cancelAppointment);
 
 // Get current appointment status (for live tracking)
 router.get('/current/status', getCurrentAppointmentStatus);
+
+// Get live tracking data
+router.get('/live-tracking/data', getLiveTrackingData);
+
+// Get doctor's queue
+router.get('/doctor/:doctorId/queue', getDoctorQueue);
 
 export default router;

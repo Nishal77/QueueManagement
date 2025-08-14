@@ -70,7 +70,10 @@ export const appointmentsAPI = {
   getMyAppointments: (params) => api.get('/appointments/my-appointments', { params }),
   getById: (id) => api.get(`/appointments/${id}`),
   cancel: (id) => api.patch(`/appointments/${id}/cancel`),
-  getCurrentStatus: () => api.get('/appointments/current/status')
+  getCurrentStatus: () => api.get('/appointments/current/status'),
+  getLiveTrackingData: () => api.get('/appointments/live-tracking/data'),
+  getDoctorQueue: (doctorId) => api.get(`/appointments/doctor/${doctorId}/queue`),
+  getAllQueues: () => api.get('/appointments/all-queues')
 }
 
 // Time slots API

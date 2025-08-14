@@ -1,6 +1,7 @@
 import Appointment from '../models/Appointment.js';
 import Patient from '../models/Patient.js';
 import Doctor from '../models/Doctor.js';
+import LiveTracker from '../models/LiveTracker.js';
 import { 
   getAvailableTimeSlots, 
   getNextQueueNumber, 
@@ -70,10 +71,21 @@ export const bookAppointment = async (req, res) => {
     });
 
     if (existingAppointment) {
-      return res.status(400).json({
-        success: false,
-        message: 'You already have an appointment on this date'
-      });
+      // Auto-cancel the existing appointment and create a new one
+      existingAppointment.status = 'cancelled';
+      await existingAppointment.save();
+      
+      // Also cancel the corresponding LiveTracker entry
+      await LiveTracker.findOneAndUpdate(
+        { appointmentId: existingAppointment._id },
+        { 
+          status: 'cancelled',
+          isActive: false,
+          endTime: new Date()
+        }
+      );
+      
+      console.log(`Cancelled existing appointment for patient ${patientId} on ${appointmentDate}`);
     }
 
     // Get next queue number
@@ -91,6 +103,21 @@ export const bookAppointment = async (req, res) => {
     });
 
     await appointment.save();
+    console.log('Appointment created:', appointment._id);
+
+    // Create LiveTracker entry
+    const liveTracker = new LiveTracker({
+      appointmentId: appointment._id,
+      doctorId: doctorId,
+      patientId: patientId,
+      queueNumber: queueNumber,
+      status: 'waiting',
+      estimatedWaitTime: estimatedWaitTime,
+      startTime: new Date()
+    });
+
+    await liveTracker.save();
+    console.log('LiveTracker created:', liveTracker._id);
 
     // Populate patient and doctor details
     await appointment.populate([
@@ -98,10 +125,19 @@ export const bookAppointment = async (req, res) => {
       { path: 'doctor', select: 'name specialization' }
     ]);
 
+    console.log('Populated appointment:', {
+      id: appointment._id,
+      patientName: appointment.patient?.name,
+      doctorName: appointment.doctor?.name,
+      queueNumber: appointment.queueNumber,
+      timeSlot: appointment.timeSlot
+    });
+
     res.status(201).json({
       success: true,
       message: 'Appointment booked successfully',
-      appointment
+      appointment,
+      liveTracker
     });
   } catch (error) {
     console.error('Error in bookAppointment:', error);
@@ -125,6 +161,7 @@ export const getPatientAppointments = async (req, res) => {
     }
 
     const appointments = await Appointment.find(query)
+      .populate('patient', 'name age gender phoneNumber')
       .populate('doctor', 'name specialization')
       .sort({ appointmentDate: -1, createdAt: -1 })
       .limit(parseInt(limit))
@@ -293,6 +330,7 @@ export const getCurrentAppointmentStatus = async (req, res) => {
       },
       status: { $nin: ['cancelled'] }
     })
+      .populate('patient', 'name age gender phoneNumber')
       .populate('doctor', 'name specialization')
       .sort({ appointmentDate: 1 });
 
@@ -303,6 +341,12 @@ export const getCurrentAppointmentStatus = async (req, res) => {
         message: 'No appointment found for today'
       });
     }
+
+    // Get live tracking data
+    const liveTracker = await LiveTracker.findOne({
+      appointmentId: currentAppointment._id,
+      isActive: true
+    });
 
     // Calculate current position in queue
     const queuePosition = await Appointment.countDocuments({
@@ -316,11 +360,168 @@ export const getCurrentAppointmentStatus = async (req, res) => {
       success: true,
       hasAppointment: true,
       appointment: currentAppointment,
+      liveTracker: liveTracker,
       queuePosition: queuePosition + 1,
       estimatedWaitTime: currentAppointment.estimatedWaitTime
     });
   } catch (error) {
     console.error('Error in getCurrentAppointmentStatus:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get live tracking data for a patient
+export const getLiveTrackingData = async (req, res) => {
+  try {
+    const patientId = req.patientId;
+
+    const liveTracker = await LiveTracker.findOne({
+      patientId: patientId,
+      isActive: true
+    })
+    .populate('appointmentId', 'appointmentDate timeSlot patientName')
+    .populate('patientId', 'name phoneNumber')
+    .populate('doctorId', 'name specialization');
+
+    if (!liveTracker) {
+      return res.status(200).json({
+        success: true,
+        hasLiveTracking: false
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      hasLiveTracking: true,
+      liveTracker
+    });
+  } catch (error) {
+    console.error('Error in getLiveTrackingData:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get doctor's current queue
+export const getDoctorQueue = async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+
+    // Get today's appointments for the doctor
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const appointments = await Appointment.find({
+      doctor: doctorId,
+      appointmentDate: {
+        $gte: today,
+        $lt: tomorrow
+      },
+      status: { $nin: ['cancelled'] }
+    })
+    .populate('patient', 'name phoneNumber age gender')
+    .populate('doctor', 'name specialization')
+    .sort({ queueNumber: 1 })
+    .lean();
+
+    // Remove duplicates based on appointment ID
+    const uniqueAppointments = appointments.filter((appointment, index, self) => 
+      index === self.findIndex(a => a._id.toString() === appointment._id.toString())
+    );
+
+    // Transform appointments to queue format
+    const queue = uniqueAppointments.map(appointment => ({
+      queueNumber: `A${appointment.queueNumber.toString().padStart(2, '0')}`, // Start from 01, 02, 03...
+      name: appointment.patient?.name || 'Unknown Patient',
+      status: appointment.status,
+      estimatedWaitTime: appointment.estimatedWaitTime,
+      appointmentId: appointment._id,
+      patientId: appointment.patient?._id,
+      doctorName: appointment.doctor?.name || 'Unknown Doctor'
+    }));
+
+    res.status(200).json({
+      success: true,
+      queue,
+      totalPatients: queue.length,
+      doctor: appointments[0]?.doctor || null
+    });
+  } catch (error) {
+    console.error('Error in getDoctorQueue:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get all active queues for all doctors
+export const getAllActiveQueues = async (req, res) => {
+  try {
+    // Get today's appointments for all doctors
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const appointments = await Appointment.find({
+      appointmentDate: {
+        $gte: today,
+        $lt: tomorrow
+      },
+      status: { $nin: ['cancelled'] }
+    })
+    .populate('patient', 'name phoneNumber age gender')
+    .populate('doctor', 'name specialization')
+    .sort({ queueNumber: 1 })
+    .lean(); // Convert to plain objects for better performance
+
+    // Remove duplicates based on appointment ID
+    const uniqueAppointments = appointments.filter((appointment, index, self) => 
+      index === self.findIndex(a => a._id.toString() === appointment._id.toString())
+    );
+
+    console.log('Found appointments for all queues:', uniqueAppointments.length);
+    uniqueAppointments.forEach(apt => {
+      console.log('Appointment:', {
+        id: apt._id,
+        patientName: apt.patient?.name,
+        doctorName: apt.doctor?.name,
+        queueNumber: apt.queueNumber,
+        status: apt.status
+      });
+    });
+
+    // Transform appointments to queue format
+    const queue = uniqueAppointments.map(appointment => ({
+      queueNumber: `A${appointment.queueNumber.toString().padStart(2, '0')}`, // Start from 01, 02, 03...
+      name: appointment.patient?.name || 'Unknown Patient',
+      status: appointment.status,
+      estimatedWaitTime: appointment.estimatedWaitTime,
+      appointmentId: appointment._id,
+      patientId: appointment.patient?._id,
+      doctorName: appointment.doctor?.name || 'Unknown Doctor'
+    }));
+
+    console.log('All active queues data:', queue);
+
+    res.status(200).json({
+      success: true,
+      queue,
+      totalPatients: queue.length
+    });
+  } catch (error) {
+    console.error('Error in getAllActiveQueues:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',

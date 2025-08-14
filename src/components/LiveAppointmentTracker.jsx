@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { Clock, User, Stethoscope, Calendar, Phone, MapPin, AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
+import { appointmentsAPI } from '../services/api'
+import QueueTable from './QueueTable'
 
 const LiveAppointmentTracker = ({ currentUser, appointments }) => {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [estimatedWaitTime, setEstimatedWaitTime] = useState(null)
+  const [liveTrackingData, setLiveTrackingData] = useState(null)
+  const [loading, setLoading] = useState(false)
 
   // Update current time every second
   useEffect(() => {
@@ -13,6 +17,13 @@ const LiveAppointmentTracker = ({ currentUser, appointments }) => {
     }, 1000)
     return () => clearInterval(timer)
   }, [])
+
+  // Fetch live tracking data
+  useEffect(() => {
+    if (currentUser) {
+      fetchLiveTrackingData()
+    }
+  }, [currentUser])
 
   // Calculate estimated wait time based on queue position
   useEffect(() => {
@@ -23,6 +34,20 @@ const LiveAppointmentTracker = ({ currentUser, appointments }) => {
       setEstimatedWaitTime(estimatedMinutes)
     }
   }, [currentUser])
+
+  const fetchLiveTrackingData = async () => {
+    try {
+      setLoading(true)
+      const response = await appointmentsAPI.getLiveTrackingData()
+      if (response.data.hasLiveTracking) {
+        setLiveTrackingData(response.data.liveTracker)
+      }
+    } catch (error) {
+      console.error('Error fetching live tracking data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (!currentUser) {
     return (
@@ -42,7 +67,8 @@ const LiveAppointmentTracker = ({ currentUser, appointments }) => {
   }
 
   const getStatusIcon = () => {
-    switch (currentUser.status) {
+    const status = liveTrackingData?.status || currentUser.status
+    switch (status) {
       case 'waiting':
         return <Loader2 className="w-6 h-6 text-yellow-600 animate-spin" />
       case 'in-progress':
@@ -55,7 +81,8 @@ const LiveAppointmentTracker = ({ currentUser, appointments }) => {
   }
 
   const getStatusText = () => {
-    switch (currentUser.status) {
+    const status = liveTrackingData?.status || currentUser.status
+    switch (status) {
       case 'waiting':
         return 'Waiting in Queue'
       case 'in-progress':
@@ -68,7 +95,8 @@ const LiveAppointmentTracker = ({ currentUser, appointments }) => {
   }
 
   const getStatusColor = () => {
-    switch (currentUser.status) {
+    const status = liveTrackingData?.status || currentUser.status
+    switch (status) {
       case 'waiting':
         return 'text-yellow-600 bg-yellow-100'
       case 'in-progress':
@@ -107,11 +135,11 @@ const LiveAppointmentTracker = ({ currentUser, appointments }) => {
               {getStatusIcon()}
               <div>
                 <h3 className="text-xl font-bold text-gray-800">{getStatusText()}</h3>
-                <p className="text-gray-600">Queue #{currentUser.queueNumber}</p>
+                <p className="text-gray-600">Queue #{liveTrackingData?.queueNumber || currentUser.queueNumber}</p>
               </div>
             </div>
             <div className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor()}`}>
-              {currentUser.status?.toUpperCase() || 'SCHEDULED'}
+              {(liveTrackingData?.status || currentUser.status)?.toUpperCase() || 'SCHEDULED'}
             </div>
           </div>
 
@@ -161,7 +189,7 @@ const LiveAppointmentTracker = ({ currentUser, appointments }) => {
           </div>
 
           {/* Wait Time Estimation */}
-          {estimatedWaitTime && currentUser.status === 'waiting' && (
+          {(liveTrackingData?.estimatedWaitTime || estimatedWaitTime) && (liveTrackingData?.status || currentUser.status) === 'waiting' && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
               <div className="flex items-center space-x-3">
                 <div className="w-8 h-8 bg-yellow-200 rounded-full flex items-center justify-center">
@@ -170,7 +198,7 @@ const LiveAppointmentTracker = ({ currentUser, appointments }) => {
                 <div>
                   <p className="text-sm font-semibold text-yellow-800">Estimated Wait Time</p>
                   <p className="text-lg font-bold text-yellow-900">
-                    {estimatedWaitTime} minutes
+                    {liveTrackingData?.estimatedWaitTime || estimatedWaitTime} minutes
                   </p>
                 </div>
               </div>
@@ -178,16 +206,16 @@ const LiveAppointmentTracker = ({ currentUser, appointments }) => {
           )}
 
           {/* Progress Bar for Waiting Status */}
-          {currentUser.status === 'waiting' && (
+          {(liveTrackingData?.status || currentUser.status) === 'waiting' && (
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-gray-700">Queue Progress</span>
-                <span className="text-sm text-gray-500">Position #{currentUser.queueNumber}</span>
+                <span className="text-sm text-gray-500">Position #{liveTrackingData?.queueNumber || currentUser.queueNumber}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
                   className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.max(10, 100 - (currentUser.queueNumber * 5))}%` }}
+                  style={{ width: `${Math.max(10, 100 - ((liveTrackingData?.queueNumber || currentUser.queueNumber) * 5))}%` }}
                 ></div>
               </div>
             </div>
@@ -210,6 +238,13 @@ const LiveAppointmentTracker = ({ currentUser, appointments }) => {
             </div>
           )}
         </div>
+
+        {/* Queue Table */}
+        {currentUser && (
+          <div className="mt-6">
+            <QueueTable currentUser={currentUser} />
+          </div>
+        )}
 
         {/* Recent Appointments Summary */}
         {appointments && appointments.length > 0 && (

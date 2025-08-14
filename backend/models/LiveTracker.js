@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const liveTrackerSchema = new mongoose.Schema({
   appointmentId: {
@@ -189,4 +189,4 @@ liveTrackerSchema.virtual('currentWaitTime').get(function() {
 liveTrackerSchema.set('toJSON', { virtuals: true });
 liveTrackerSchema.set('toObject', { virtuals: true });
 
-module.exports = mongoose.model('LiveTracker', liveTrackerSchema);
+export default mongoose.model('LiveTracker', liveTrackerSchema);
