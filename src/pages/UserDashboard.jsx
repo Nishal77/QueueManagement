@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen } from 'lucide-react'
+import { BookOpen, Stethoscope, Calendar, Clock, User, AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { appointmentsAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
+import LiveAppointmentTracker from '../components/LiveAppointmentTracker'
 import BookingForm from './BookingForm'
 
 const UserDashboard = () => {
@@ -14,6 +15,7 @@ const UserDashboard = () => {
   const [currentAppointment, setCurrentAppointment] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showBookingForm, setShowBookingForm] = useState(false)
+  const [currentTime, setCurrentTime] = useState(new Date())
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const { socket, isConnected } = useSocket()
@@ -36,12 +38,25 @@ const UserDashboard = () => {
     }
   }, [socket])
 
+  // Update current time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
   const fetchAppointments = async () => {
     try {
       const response = await appointmentsAPI.getMyAppointments()
-      setAppointments(response.data.appointments)
+      // Ensure appointments have proper structure and filter out any malformed data
+      const validAppointments = (response.data.appointments || []).filter(appointment => 
+        appointment && appointment._id && appointment.doctor
+      )
+      setAppointments(validAppointments)
     } catch (error) {
       console.error('Error fetching appointments:', error)
+      setAppointments([])
     } finally {
       setLoading(false)
     }
@@ -66,6 +81,13 @@ const UserDashboard = () => {
     toast.success('Appointment status updated!')
   }
 
+  const handleBookingSuccess = (appointment) => {
+    setShowBookingForm(false)
+    fetchAppointments()
+    fetchCurrentStatus()
+    toast.success('Appointment booked successfully!')
+  }
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'waiting': return 'text-yellow-600 bg-yellow-100'
@@ -86,7 +108,7 @@ const UserDashboard = () => {
       <div className="absolute top-6 right-6 z-50">
         <Button
           onClick={() => setShowBookingForm(!showBookingForm)}
-          className="bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-lg transition-all duration-200"
+          className="bg-gradient-to-r from-black to-gray-800 hover:from-gray-800 hover:to-black text-white px-6 py-3 rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
         >
           <BookOpen className="w-5 h-5 mr-2" />
           {showBookingForm ? 'Close Form' : 'Book Appointment'}
@@ -102,117 +124,81 @@ const UserDashboard = () => {
             Welcome to Queue Management
           </h1>
           <p className="text-gray-600 text-base md:text-lg max-w-xl mx-auto leading-relaxed">
-            Experience seamless healthcare appointment booking with real-time queue tracking and instant updates. 
-            Book your appointment in seconds and track your status live.
+            Experience seamless healthcare appointment booking and tracking with real-time queue updates and instant notifications. 
+            Book your appointment and track your status live.
           </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-12">
+        <div className="flex flex-col sm:flex-row gap-6 mb-16">
           <Button
             onClick={() => setShowBookingForm(true)}
-            className="bg-black hover:bg-gray-800 text-white px-6 py-3 text-base rounded-lg transition-all duration-200"
+            className="bg-gradient-to-r from-black to-gray-800 hover:from-gray-800 hover:to-black text-white px-8 py-4 text-lg font-semibold rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl transform hover:scale-105"
           >
+            <BookOpen className="mr-3 w-6 h-6" />
             Book Appointment
           </Button>
           <Button
             variant="outline"
             onClick={() => setShowBookingForm(false)}
-            className="border-2 border-black text-black hover:bg-gray-50 px-6 py-3 text-base rounded-lg transition-all duration-200"
+            className="border-3 border-black text-black hover:bg-black hover:text-white px-8 py-4 text-lg font-semibold rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
-            View History
+            View Status
           </Button>
         </div>
 
-        {/* Geometric Graphic */}
-        <div className="relative w-full max-w-3xl mb-12">
-          <div className="flex justify-center">
-            <div className="relative">
-              {/* Main Cube Structure */}
-              <div className="w-48 h-48 relative transform rotate-45">
-                {/* Front Face */}
-                <div className="absolute inset-0 bg-black opacity-20 border-2 border-black"></div>
-                {/* Right Face */}
-                <div className="absolute inset-0 bg-black opacity-10 border-2 border-black transform rotate-45 origin-left"></div>
-                {/* Top Face */}
-                <div className="absolute inset-0 bg-black opacity-15 border-2 border-black transform -rotate-45 origin-bottom"></div>
-                
-                {/* Striped Pattern */}
-                <div className="absolute inset-0 flex flex-col">
-                  {[...Array(6)].map((_, i) => (
-                    <div key={i} className="h-8 bg-black opacity-30"></div>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Arrow Pointer */}
-              <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
-                <div className="w-0 h-0 border-l-6 border-r-6 border-b-12 border-transparent border-b-black"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Booking Form Section */}
-        {showBookingForm && (
-          <div className="w-full max-w-3xl mb-12">
-            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-gray-800">Book Your Appointment</h2>
-                <Button
-                  onClick={() => setShowBookingForm(false)}
-                  variant="outline"
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  ✕
-                </Button>
-              </div>
-              <BookingForm onBookingSuccess={() => {
-                setShowBookingForm(false)
-                fetchAppointments()
-                fetchCurrentStatus()
-              }} />
-            </div>
-          </div>
-        )}
-
         {/* Current Appointment Section */}
         {currentAppointment && (
-          <div className="w-full max-w-3xl mb-8">
-            <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
-              <h2 className="text-xl font-bold text-center mb-4 text-gray-800">Current Appointment</h2>
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      Dr. {currentAppointment.doctor.name}
-                    </h3>
-                    <p className="text-gray-600 text-sm">{currentAppointment.doctor.specialization}</p>
+          <div className="w-full max-w-4xl mb-8">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-8 border border-blue-200 shadow-lg">
+              <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">Current Appointment</h2>
+              <div className="bg-white rounded-2xl p-6 border border-blue-200 shadow-md">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Stethoscope className="w-8 h-8 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-800">
+                        Dr. {currentAppointment.doctor.name}
+                      </h3>
+                      <p className="text-gray-600 text-lg">{currentAppointment.doctor.specialization}</p>
+                    </div>
                   </div>
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(currentAppointment.status)}`}>
+                  <div className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(currentAppointment.status)}`}>
                     {currentAppointment.status.replace('-', ' ').toUpperCase()}
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div className="flex items-center">
-                    <span className="text-gray-500 mr-2 text-sm">📅</span>
-                    <span className="text-gray-700 text-sm">
-                      {format(new Date(currentAppointment.appointmentDate), 'MMM dd, yyyy')}
-                    </span>
+                <div className="grid grid-cols-2 gap-6 mb-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                      <span className="text-gray-600 text-lg">📅</span>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 font-medium">Appointment Date</p>
+                      <span className="text-lg font-semibold text-gray-800">
+                        {format(new Date(currentAppointment.appointmentDate), 'MMM dd, yyyy')}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center">
-                    <span className="text-gray-500 mr-2 text-sm">🕐</span>
-                    <span className="text-gray-700 text-sm">{currentAppointment.timeSlot}</span>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                      <span className="text-gray-600 text-lg">🕐</span>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 font-medium">Time Slot</p>
+                      <span className="text-lg font-semibold text-gray-800">{currentAppointment.timeSlot}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-blue-50 rounded-lg p-3">
+                <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl p-6 text-white">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600 mb-1">
+                    <div className="text-4xl font-bold mb-2">
                       Queue #{currentAppointment.queueNumber}
                     </div>
-                    <p className="text-xs text-blue-700">
+                    <p className="text-blue-100 text-lg">
                       Estimated wait time: {currentAppointment.estimatedWaitTime} minutes
                     </p>
                   </div>
@@ -222,72 +208,162 @@ const UserDashboard = () => {
           </div>
         )}
 
-        {/* Appointments History Section */}
-        <div className="w-full max-w-3xl">
-          <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
-            <h2 className="text-xl font-bold text-center mb-4 text-gray-800">Appointment History</h2>
-            
-            {loading ? (
-              <div className="flex items-center justify-center py-6">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-black"></div>
-                <span className="ml-2 text-gray-600 text-sm">Loading appointments...</span>
-              </div>
-            ) : appointments.length === 0 ? (
-              <div className="text-center py-6">
-                <p className="text-gray-500 mb-3 text-sm">No appointments found</p>
-                {!showBookingForm && (
-                  <Button
-                    onClick={() => setShowBookingForm(true)}
-                    className="bg-black hover:bg-gray-800 text-white px-4 py-2 text-sm rounded-lg transition-all duration-200"
-                  >
-                    Book Your First Appointment
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {appointments.map((appointment) => (
-                  <div
-                    key={appointment._id}
-                    className="border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow bg-white"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <h3 className="font-semibold text-gray-800 text-sm">
-                          Dr. {appointment.doctor.name}
-                        </h3>
-                        <p className="text-gray-600 text-xs">{appointment.doctor.specialization}</p>
-                      </div>
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(appointment.status)}`}>
-                        {appointment.status.replace('-', ' ').toUpperCase()}
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3 mb-2">
-                      <div className="flex items-center">
-                        <span className="text-gray-500 mr-2 text-xs">📅</span>
-                        <span className="text-gray-700 text-xs">
-                          {format(new Date(appointment.appointmentDate), 'MMM dd, yyyy')}
-                        </span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-gray-500 mr-2 text-xs">🕐</span>
-                        <span className="text-gray-700 text-xs">{appointment.timeSlot}</span>
-                      </div>
-                    </div>
+        {/* Live Appointment Status */}
+        <div className="w-full max-w-4xl mb-8">
+          <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-3xl p-8 border border-green-200 shadow-lg">
+            <div className="text-center mb-6">
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">Live Appointment Status</h2>
+              <p className="text-gray-600 text-lg">Real-time updates on your appointment</p>
+            </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="text-blue-600 font-medium text-xs">
-                        Queue #{appointment.queueNumber}
+            {/* Current Time Display */}
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center space-x-2 bg-white px-4 py-2 rounded-full shadow-md">
+                <Clock className="w-5 h-5 text-green-600" />
+                <span className="text-lg font-semibold text-gray-800">
+                  {format(currentTime, 'HH:mm:ss')}
+                </span>
+              </div>
+            </div>
+
+            {currentAppointment ? (
+              <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+                {/* Status Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-3">
+                    {currentAppointment.status === 'waiting' && <Loader2 className="w-6 h-6 text-yellow-600 animate-spin" />}
+                    {currentAppointment.status === 'in-progress' && <AlertCircle className="w-6 h-6 text-blue-600" />}
+                    {currentAppointment.status === 'completed' && <CheckCircle className="w-6 h-6 text-green-600" />}
+                    {!['waiting', 'in-progress', 'completed'].includes(currentAppointment.status) && <Clock className="w-6 h-6 text-gray-600" />}
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-800">
+                        {currentAppointment.status === 'waiting' && 'Waiting in Queue'}
+                        {currentAppointment.status === 'in-progress' && 'Currently with Doctor'}
+                        {currentAppointment.status === 'completed' && 'Appointment Completed'}
+                        {!['waiting', 'in-progress', 'completed'].includes(currentAppointment.status) && 'Scheduled'}
+                      </h3>
+                      <p className="text-gray-600">Queue #{currentAppointment.queueNumber}</p>
+                    </div>
+                  </div>
+                  <div className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(currentAppointment.status)}`}>
+                    {currentAppointment.status?.toUpperCase() || 'SCHEDULED'}
+                  </div>
+                </div>
+
+                {/* Patient Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Patient Name</p>
+                      <span className="text-sm font-semibold text-gray-800">{currentAppointment.patientName}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <Stethoscope className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Doctor</p>
+                      <span className="text-sm font-semibold text-gray-800">Dr. {currentAppointment.doctor?.name}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                      <Calendar className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Appointment Date</p>
+                      <span className="text-sm font-semibold text-gray-800">
+                        {format(new Date(currentAppointment.appointmentDate), 'MMM dd, yyyy')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Time Slot</p>
+                      <span className="text-sm font-semibold text-gray-800">{currentAppointment.timeSlot}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Wait Time Estimation */}
+                {currentAppointment.status === 'waiting' && currentAppointment.estimatedWaitTime && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-yellow-200 rounded-full flex items-center justify-center">
+                        <Clock className="w-4 h-4 text-yellow-700" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-yellow-800">Estimated Wait Time</p>
+                        <p className="text-lg font-bold text-yellow-900">
+                          {currentAppointment.estimatedWaitTime} minutes
+                        </p>
                       </div>
                     </div>
                   </div>
-                ))}
+                )}
+
+                {/* Progress Bar for Waiting Status */}
+                {currentAppointment.status === 'waiting' && (
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Queue Progress</span>
+                      <span className="text-sm text-gray-500">Position #{currentAppointment.queueNumber}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-green-600 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.max(10, 100 - (currentAppointment.queueNumber * 5))}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-green-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Calendar className="w-10 h-10 text-green-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">No Active Appointment</h3>
+                  <p className="text-gray-600 text-lg">You don't have any active appointments at the moment.</p>
+                  <p className="text-gray-500 mt-2">Book an appointment to start tracking your queue status.</p>
+                </div>
               </div>
             )}
           </div>
         </div>
+
+        {/* Live Appointment Tracker */}
+        <div className="w-full mb-8">
+          <LiveAppointmentTracker 
+            currentUser={currentAppointment ? {
+              name: currentAppointment.patientName,
+              queueNumber: currentAppointment.queueNumber,
+              doctor: currentAppointment.doctor,
+              appointmentDate: currentAppointment.appointmentDate,
+              timeSlot: currentAppointment.timeSlot,
+              estimatedWaitTime: currentAppointment.estimatedWaitTime
+            } : null}
+            appointments={appointments}
+          />
+        </div>
+
       </div>
+
+      {/* Booking Form Modal */}
+      {showBookingForm && (
+        <BookingForm onBookingSuccess={handleBookingSuccess} />
+      )}
     </div>
   )
 }

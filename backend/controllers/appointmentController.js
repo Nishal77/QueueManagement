@@ -267,7 +267,8 @@ export const getAvailableSlots = async (req, res) => {
         workingHours: doctor.workingHours
       },
       date,
-      availableSlots
+      slots: availableSlots,
+      availableSlots: availableSlots
     });
   } catch (error) {
     console.error('Error in getAvailableSlots:', error);
