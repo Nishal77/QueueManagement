@@ -73,7 +73,9 @@ export const appointmentsAPI = {
   getCurrentStatus: () => api.get('/appointments/current/status'),
   getLiveTrackingData: () => api.get('/appointments/live-tracking/data'),
   getDoctorQueue: (doctorId) => api.get(`/appointments/doctor/${doctorId}/queue`),
-  getAllQueues: () => api.get('/appointments/all-queues')
+  getAllQueues: () => api.get('/appointments/all-queues'),
+  getAllAppointments: () => api.get('/appointments/all'),
+  updateAppointmentStatus: (appointmentId, status) => api.patch(`/appointments/${appointmentId}/status`, { status })
 }
 
 // Time slots API

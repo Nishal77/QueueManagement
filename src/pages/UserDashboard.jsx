@@ -16,6 +16,7 @@ const UserDashboard = () => {
   const [loading, setLoading] = useState(true)
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [updatedAppointmentId, setUpdatedAppointmentId] = useState(null)
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const { socket, isConnected } = useSocket()
@@ -32,8 +33,10 @@ const UserDashboard = () => {
   useEffect(() => {
     if (socket) {
       socket.on('appointment-updated', handleAppointmentUpdate)
+      socket.on('appointment-status-updated', handleAppointmentStatusUpdate)
       return () => {
         socket.off('appointment-updated', handleAppointmentUpdate)
+        socket.off('appointment-status-updated', handleAppointmentStatusUpdate)
       }
     }
   }, [socket])
@@ -85,6 +88,41 @@ const UserDashboard = () => {
     toast.success('Appointment status updated!')
   }
 
+  const handleAppointmentStatusUpdate = (data) => {
+    console.log('Received appointment status update:', data)
+    
+    // Update appointments list in real-time
+    setAppointments(prev => prev.map(appointment => 
+      appointment._id === data.appointmentId 
+        ? { ...appointment, status: data.status }
+        : appointment
+    ))
+    
+    // Update current appointment if it matches
+    if (currentAppointment && currentAppointment._id === data.appointmentId) {
+      setCurrentAppointment(prev => ({ ...prev, status: data.status }))
+    }
+    
+    // Set updated appointment ID for visual feedback
+    setUpdatedAppointmentId(data.appointmentId)
+    setTimeout(() => setUpdatedAppointmentId(null), 3000) // Clear after 3 seconds
+    
+    // Show toast notification
+    const statusText = data.status === 'waiting' ? 'Waiting' :
+                      data.status === 'in-progress' ? 'In Consultation' :
+                      data.status === 'completed' ? 'Completed' : data.status
+    
+    toast.success(`Your appointment status updated to: ${statusText}`, {
+      duration: 4000,
+      icon: '🏥',
+      style: {
+        background: '#1f2937',
+        color: '#fff',
+        border: '1px solid #10b981'
+      }
+    })
+  }
+
   const handleBookingSuccess = (appointment) => {
     setShowBookingForm(false)
     // Add a small delay to ensure backend has processed the booking
@@ -125,8 +163,10 @@ const UserDashboard = () => {
         {/* Hero Section */}
         <div className="text-center mb-0 flex flex-col items-center justify-center min-h-[60vh]">
           <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-full mb-12 shadow-2xl border border-white/20">
-            <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse shadow-lg"></div>
-            <span className="text-sm font-medium tracking-wider uppercase" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Live Queue Tracking</span>
+            <div className={`w-3 h-3 rounded-full shadow-lg ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`}></div>
+            <span className="text-sm font-medium tracking-wider uppercase" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+              {isConnected ? 'Live Queue Tracking' : 'Offline Mode'}
+            </span>
           </div>
           <h2 className="text-4xl md:text-5xl font-medium text-white mb-4 leading-tight max-w-5xl mx-auto tracking-tight" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
           Say Goodbye to Long Waits Experience Seamless, Real-Time Appointment Management at <span className="italic text-orange-500">(Ashok Hospital)</span>
@@ -154,6 +194,8 @@ const UserDashboard = () => {
             Contact Us
           </Button>
         </div>
+
+
 
         {/* Current Appointment Section */}
         {currentAppointment && (
@@ -244,245 +286,113 @@ const UserDashboard = () => {
             </div>
             
             <div className="p-8">
-              {/* Doctor 1 Section */}
-              <div className="mb-8">
-                <div className="flex items-center space-x-4 mb-6 p-4 rounded-xl border border-emerald-500/30" style={{
-                  background: 'linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #001a00 100%)'
-                }}>
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <Stethoscope className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-medium text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Dr. Sarah Johnson</h4>
-                    <p className="text-xs text-emerald-300" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Cardiologist • Room 101</p>
+                          {/* Live Tracking Status */}
+            <div className="space-y-8">
+              {isConnected && (
+                <div className="flex items-center justify-center mb-4">
+                  <div className="inline-flex items-center space-x-2 bg-emerald-500/20 backdrop-blur-sm text-emerald-300 px-4 py-2 rounded-full border border-emerald-500/30">
+                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                    <span className="text-xs font-medium" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+                      Real-time updates active
+                    </span>
                   </div>
                 </div>
-                
-                <div className="overflow-hidden rounded-2xl border border-gray-700 bg-gray-900">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-black text-white border-b border-gray-700">
-                        <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Queue No.</th>
-                        <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Patient Name</th>
-                        <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Patient Status</th>
-                        <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Est. Wait</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b border-gray-700 bg-black transition-all duration-300 hover:bg-gray-900">
-                        <td className="py-4 px-6">
-                          <span className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">
-                            A01
-                          </span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <span className="text-blue-600 text-xs font-medium">M</span>
-                            </div>
-                            <span className="text-white font-medium">Michael Chen</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
-                            <span className="text-green-400 font-medium">In Consultation</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-white font-medium">-</td>
-                      </tr>
-                      <tr className="border-b border-gray-700 bg-black transition-all duration-300 hover:bg-gray-900 opacity-60">
-                        <td className="py-4 px-6">
-                          <span className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">
-                            A02
-                          </span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                              <span className="text-green-600 text-xs font-medium">E</span>
-                            </div>
-                            <span className="text-white font-medium">Emma Rodriguez</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-red-400 rounded-full shadow-lg"></div>
-                            <span className="text-red-400 font-medium">Completed</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-white font-medium">-</td>
-                      </tr>
-                      <tr className="transition-all duration-300" style={{
-                        background: 'linear-gradient(135deg, #fefce8 0%, #fef3c7 50%, #fde68a 100%)',
-                        boxShadow: '0 2px 10px rgba(245, 158, 11, 0.2)'
+              )}
+                {appointments.length > 0 ? (
+                  appointments.map((appointment, index) => (
+                    <div key={appointment._id} className="mb-8">
+                      <div className="flex items-center space-x-4 mb-6 p-4 rounded-xl border border-emerald-500/30" style={{
+                        background: 'linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #001a00 100%)'
                       }}>
-                        <td className="py-4 px-6">
-                          <span className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">
-                            A03
-                          </span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                              <span className="text-purple-600 text-xs font-medium">D</span>
-                            </div>
-                            <span className="text-white font-medium">David Kim</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse shadow-lg"></div>
-                            <span className="text-yellow-400 font-medium">Waiting</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-white font-medium">5-8 min</td>
-                      </tr>
-                      <tr className="bg-black transition-all duration-300 hover:bg-gray-900">
-                        <td className="py-4 px-6">
-                          <span className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">
-                            A04
-                          </span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                              <span className="text-orange-600 text-xs font-medium">S</span>
-                            </div>
-                            <span className="text-white font-medium">Sarah Johnson</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse shadow-lg"></div>
-                            <span className="text-blue-400 font-medium">Up Next</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-white font-medium">2-3 min</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                          <Stethoscope className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-medium text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+                            {appointment.doctor?.name || 'Doctor'}
+                          </h4>
+                          <p className="text-xs text-emerald-300" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+                            {appointment.doctor?.specialization || 'Specialist'} • Room {appointment.doctor?.room || 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="overflow-hidden rounded-2xl border border-gray-700 bg-gray-900">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-black text-white border-b border-gray-700">
+                              <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Queue No.</th>
+                              <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Patient Name</th>
+                              <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Patient Status</th>
+                              <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Est. Wait</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className={`border-b border-gray-700 transition-all duration-300 hover:bg-gray-900 ${
+                              updatedAppointmentId === appointment._id 
+                                ? 'bg-emerald-900/50 border-emerald-500/50 shadow-lg shadow-emerald-500/20' 
+                                : 'bg-black'
+                            }`}>
+                              <td className="py-4 px-6">
+                                <span className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">
+                                  {appointment.queueNumber?.toString().padStart(2, '0') || '01'}
+                                </span>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <span className="text-blue-600 text-xs font-medium">
+                                      {(appointment.patientName || appointment.patient?.name || 'U').charAt(0).toUpperCase()}
+                                    </span>
+                                  </div>
+                                  <span className="text-white font-medium">
+                                    {appointment.patientName || appointment.patient?.name || 'Unknown'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-4 px-6">
+                                <div className="flex items-center space-x-2">
+                                  <div className={`w-2 h-2 rounded-full shadow-lg ${
+                                    appointment.status === 'waiting' ? 'bg-yellow-400 animate-pulse' :
+                                    appointment.status === 'in-progress' ? 'bg-green-400 animate-pulse' :
+                                    appointment.status === 'completed' ? 'bg-red-400' :
+                                    'bg-blue-400 animate-pulse'
+                                  }`}></div>
+                                  <span className={`font-medium ${
+                                    appointment.status === 'waiting' ? 'text-yellow-400' :
+                                    appointment.status === 'in-progress' ? 'text-green-400' :
+                                    appointment.status === 'completed' ? 'text-red-400' :
+                                    'text-blue-400'
+                                  }`}>
+                                    {appointment.status === 'waiting' ? 'Waiting' :
+                                     appointment.status === 'in-progress' ? 'In Consultation' :
+                                     appointment.status === 'completed' ? 'Completed' :
+                                     'Up Next'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-4 px-6 text-white font-medium">
+                                {appointment.status === 'in-progress' || appointment.status === 'completed' ? '-' : '5-8 min'}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-16">
+                    <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Stethoscope className="w-10 h-10 text-gray-400" />
+                    </div>
+                    <p className="text-gray-300 font-black text-lg mb-2" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+                      No appointments found
+                    </p>
+                    <p className="text-gray-500">Book an appointment to see it here</p>
+                  </div>
+                )}
               </div>
-
-              {/* Doctor 2 Section */}
-              <div>
-                <div className="flex items-center space-x-4 mb-6 p-4 rounded-xl border border-emerald-500/30" style={{
-                  background: 'linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #001a00 100%)'
-                }}>
-                  <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <Stethoscope className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-medium text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Dr. Robert Williams</h4>
-                    <p className="text-xs text-emerald-300" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Neurologist • Room 205</p>
-                  </div>
-                </div>
                 
-                <div className="overflow-hidden rounded-xl border border-gray-700 bg-black">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-black text-white border-b border-gray-700">
-                        <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Queue No.</th>
-                        <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Patient Name</th>
-                        <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Patient Status</th>
-                        <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Est. Wait</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b border-gray-700 bg-black transition-all duration-300 hover:bg-gray-900">
-                        <td className="py-4 px-6">
-                          <span className="bg-emerald-500 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">
-                            B01
-                          </span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                              <span className="text-emerald-600 text-xs font-medium">S</span>
-                            </div>
-                            <span className="text-white font-medium">Sophie Anderson</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
-                            <span className="text-green-400 font-medium">In Consultation</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-white font-medium">-</td>
-                      </tr>
-                      <tr className="border-b border-gray-700 bg-black transition-all duration-300 hover:bg-gray-900 opacity-60">
-                        <td className="py-4 px-6">
-                          <span className="bg-emerald-500 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">
-                            B02
-                          </span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                              <span className="text-orange-600 text-xs font-medium">J</span>
-                            </div>
-                            <span className="text-white font-medium">James Wilson</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-red-400 rounded-full shadow-lg"></div>
-                            <span className="text-red-400 font-medium">Completed</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-white font-medium">-</td>
-                      </tr>
-                      <tr className="border-b border-gray-700 bg-black transition-all duration-300 hover:bg-gray-900">
-                        <td className="py-4 px-6">
-                          <span className="bg-emerald-500 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">
-                            B03
-                          </span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
-                              <span className="text-pink-600 text-xs font-medium">L</span>
-                            </div>
-                            <span className="text-white font-medium">Lisa Thompson</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse shadow-lg"></div>
-                            <span className="text-yellow-400 font-medium">Waiting</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-white font-medium">8-10 min</td>
-                      </tr>
-                      <tr className="bg-black transition-all duration-300 hover:bg-gray-900">
-                        <td className="py-4 px-6">
-                          <span className="bg-emerald-500 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">
-                            B04
-                          </span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                              <span className="text-indigo-600 text-xs font-medium">R</span>
-                            </div>
-                            <span className="text-white font-medium">Robert Davis</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse shadow-lg"></div>
-                            <span className="text-blue-400 font-medium">Up Next</span>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-white font-medium">1-2 min</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -494,6 +404,7 @@ const UserDashboard = () => {
       {showBookingForm && (
         <BookingForm onBookingSuccess={handleBookingSuccess} />
       )}
+    </div>
     </div>
   )
 }

@@ -44,7 +44,7 @@ function App() {
                 <div className="relative z-10">
                   <Routes>
                     <Route path="/" element={<ProtectedDashboard><UserDashboard /></ProtectedDashboard>} />
-                    <Route path="/doctor-dashboard" element={<ProtectedDashboard><DoctorDashboard /></ProtectedDashboard>} />
+                    <Route path="/doctor" element={<ProtectedDashboard><DoctorDashboard /></ProtectedDashboard>} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </div>
