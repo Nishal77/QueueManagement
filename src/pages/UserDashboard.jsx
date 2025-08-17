@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Stethoscope, Calendar, Clock, User, AlertCircle, CheckCircle, Loader2, Heart } from 'lucide-react'
+import { BookOpen, Stethoscope, Calendar, Clock, User, AlertCircle, CheckCircle, Loader2, Heart, ArrowRight, Phone } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { appointmentsAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
@@ -22,16 +22,17 @@ const UserDashboard = () => {
   const { socket, isConnected } = useSocket()
 
   useEffect(() => {
-    if (!user) {
-      navigate('/')
-      return
+    // Only fetch data if user exists
+    if (user) {
+      fetchAppointments()
+      fetchCurrentStatus()
+    } else {
+      setLoading(false)
     }
-    fetchAppointments()
-    fetchCurrentStatus()
-  }, [user, navigate])
+  }, [user])
 
   useEffect(() => {
-    if (socket) {
+    if (socket && user) {
       console.log('Setting up socket listeners for UserDashboard')
       
       socket.on('appointment-updated', (data) => {
@@ -127,26 +128,11 @@ const UserDashboard = () => {
     // Set updated appointment ID for visual feedback
     setUpdatedAppointmentId(data.appointmentId)
     setTimeout(() => setUpdatedAppointmentId(null), 3000) // Clear after 3 seconds
-    
-    // Show toast notification immediately
-    const statusText = data.status === 'waiting' ? 'Waiting' :
-                      data.status === 'in-progress' ? 'In Consultation' :
-                      data.status === 'completed' ? 'Completed' : data.status
-    
-    toast.success(`Your appointment status updated to: ${statusText}`, {
-      duration: 4000,
-      icon: '🏥',
-      style: {
-        background: '#1f2937',
-        color: '#fff',
-        border: '1px solid #10b981'
-      }
-    })
   }
 
-  const handleBookingSuccess = (appointment) => {
+  const handleBookingSuccess = () => {
     setShowBookingForm(false)
-    // Add a small delay to ensure backend has processed the booking
+    // Refresh data after a short delay to ensure backend has processed the booking
     setTimeout(() => {
       fetchAppointments()
       fetchCurrentStatus()
@@ -164,10 +150,89 @@ const UserDashboard = () => {
     }
   }
 
+  // Show landing experience when no user
   if (!user) {
-    return null
+    return (
+      <div className="min-h-screen w-full relative">
+        {/* Azure Depths */}
+        <div
+          className="absolute inset-0 z-0"
+          style={{
+            background: "radial-gradient(125% 125% at 50% 100%, #000000 40%, #010133 100%)",
+          }}
+        />
+        
+        {/* Main Content */}
+        <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+          
+          {/* Hero Section */}
+          <div className="text-center mb-0 flex flex-col items-center justify-center min-h-[60vh]">
+            <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-full mb-12 shadow-2xl border border-white/20">
+              <div className="w-3 h-3 rounded-full shadow-lg bg-emerald-400 animate-pulse"></div>
+              <span className="text-sm font-medium tracking-wider uppercase" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+                Welcome to QueueManagement
+              </span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-medium text-white mb-4 leading-tight max-w-5xl mx-auto tracking-tight" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
+              Experience Seamless, Real-Time Appointment Management at <span className="italic text-orange-500">(Ashok Hospital)</span>
+            </h2>
+            <p className="text-xl text-gray-300 max-w-2xl mx-auto leading-relaxed">
+              Book, track, and get notified — all from your phone.
+            </p>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex flex-col sm:flex-row gap-8 mb-16 justify-center">
+            <Button
+              onClick={() => navigate('/booking')}
+              className="bg-white text-black hover:bg-gray-50 px-12 py-6 text-xl font-medium rounded-lg transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:bg-white/80 border border-gray-200"
+              style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}
+            >
+              <BookOpen className="mr-0 w-7 h-7" />
+              Book Appointment
+            </Button>
+            <Button
+              onClick={() => navigate('/verify-otp')}
+              className="bg-white text-black hover:bg-gray-50 px-12 py-6 text-xl font-medium rounded-lg transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:bg-white/80 border border-gray-200"
+              style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}
+            >
+              <Phone className="mr-0 w-7 h-7" />
+              Login with OTP
+            </Button>
+          </div>
+
+          {/* Features Grid */}
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-300">
+              <div className="bg-blue-500/20 rounded-full p-3 w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <Clock className="w-8 h-8 text-blue-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">Real-Time Tracking</h3>
+              <p className="text-blue-200">Monitor your appointment status live with instant updates</p>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-300">
+              <div className="bg-purple-500/20 rounded-full p-3 w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <User className="w-8 h-8 text-purple-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">Expert Doctors</h3>
+              <p className="text-blue-200">Choose from our team of experienced healthcare professionals</p>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-300">
+              <div className="bg-green-500/20 rounded-full p-3 w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <Heart className="w-8 h-8 text-green-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">Secure & Private</h3>
+              <p className="text-blue-200">Your health information is protected with bank-level security</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
+  // Show dashboard when user exists
   return (
     <div className="min-h-screen w-full relative">
       {/* Emerald Void */}
