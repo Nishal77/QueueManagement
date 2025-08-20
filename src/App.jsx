@@ -29,6 +29,7 @@ import BookingForm from './pages/BookingForm'
 import UserDashboard from './pages/UserDashboard'
 import DoctorDashboard from './pages/DoctorDashboard'
 import TestPage from './pages/TestPage'
+import Features from './pages/Features'
 
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -36,24 +37,24 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 // Protected Dashboard Route
 const ProtectedDashboard = ({ children }) => {
   const { user, loading } = useAuth()
-  
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
     </div>
   }
-  
+
   if (!user) {
     return <Navigate to="/" replace />
   }
-  
+
   return children
 }
 
 // Booking Form Wrapper Component
 const BookingFormWrapper = () => {
   const navigate = useNavigate()
-  
+
   const handleBookingSuccess = (appointment) => {
     if (appointment) {
       // If booking was successful, redirect to dashboard
@@ -63,7 +64,7 @@ const BookingFormWrapper = () => {
       navigate('/')
     }
   }
-  
+
   return <BookingForm onBookingSuccess={handleBookingSuccess} />
 }
 
@@ -74,25 +75,27 @@ function App() {
         <div className="min-h-screen w-full relative bg-white">
           {/* Navigation
           <Navigation /> */}
-          
+
           {/* Your Content/Components */}
           <div className="relative z-10">
             <Routes>
               {/* Landing Page - Default Route */}
               <Route path="/" element={<LandingPage />} />
-              
+
               {/* Public Routes */}
               <Route path="/verify-otp" element={<OTPVerification />} />
               <Route path="/booking" element={<BookingFormWrapper />} />
               <Route path="/doctor" element={<DoctorDashboard />} />
               <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
               <Route path="/test" element={<TestPage />} />
-              
+
               {/* Protected Routes */}
               <Route path="/dashboard" element={<ProtectedDashboard><UserDashboard /></ProtectedDashboard>} />
-              
+
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/features" element={<Features />} />
             </Routes>
           </div>
         </div>
