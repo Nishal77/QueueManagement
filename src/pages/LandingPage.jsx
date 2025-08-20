@@ -66,6 +66,15 @@ const LandingPage = () => {
             <span>5+ New Features</span>
             <Zap className="w-4 h-4 ml-2 text-black" />
             <span className="ml-2">Read More →</span>
+            <Button
+              onClick={() => navigate('/features')}
+              className="bg-white text-black px-8 py-6 rounded-2xl font-bold text-lg transition-all duration-300 flex items-center justify-center border border-black shadow-2xl hover:shadow-black/25 transform hover:scale-105 min-w-[280px]"
+            >
+              <div className="text-left">
+                <div className="font-bold text-xl">Book Appointment</div>
+                <div className="text-sm text-black font-medium">Quick & Easy Booking</div>
+              </div>
+            </Button>
           </div>
           
           {/* Main Heading */}
@@ -112,13 +121,7 @@ const LandingPage = () => {
               Doctor Dashboard
             </Button>
             
-            <Button
-              onClick={() => navigate('/verify-otp')}
-              className="bg-gray-100 hover:bg-gray-200 border-2 border-gray-300 text-black px-6 py-3 rounded-xl font-medium transition-all duration-300 flex items-center justify-center hover:border-gray-400"
-            >
-              <span className="mr-2">&lt;/&gt;</span>
-              Login with OTP
-            </Button>
+            
           </div>
         </div>
       </div>
