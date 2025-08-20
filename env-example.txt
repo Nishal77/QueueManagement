@@ -1,0 +1,12 @@
+# Copy this file to .env and fill in your values
+# Make sure each variable is on a separate line
+# No spaces around the = sign
+# No quotes around the values
+
+VITE_SUPABASE_URL=your_supabase_url_here
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+
+# Optional Twilio credentials (if you want to implement real SMS)
+VITE_TWILIO_ACCOUNT_SID=your_twilio_account_sid_here
+VITE_TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
+VITE_TWILIO_PHONE_NUMBER=your_twilio_phone_number_here
