@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { Heart, Phone, User, ArrowRight } from 'lucide-react'
+import { Heart, Phone, User, ArrowRight, Clock, Shield, Zap, Star, ChevronRight, Play, Copy, Eye } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { authAPI } from '../services/supabaseApi'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
-import Hero from '../components/Hero'
 
 const LandingPage = () => {
   const [isLoading, setIsLoading] = useState(false)
@@ -38,98 +37,88 @@ const LandingPage = () => {
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <Hero />
-      
-      {/* Appointment Form Section */}
-      <div className="py-16 px-4 bg-gradient-to-b from-transparent to-blue-900/20">
-        <div className="max-w-md mx-auto">
-          {/* Form Header */}
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-white mb-2">Book Your Appointment</h2>
-            <p className="text-blue-200 mb-4">Quick and easy appointment booking</p>
-            
-
-          </div>
-
-          {/* Login Form */}
-          <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-700 rounded-2xl shadow-2xl p-8">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Name Field */}
-              <div>
-                <label className="block text-sm font-medium text-blue-200 mb-2">
-                  <User className="w-4 h-4 inline mr-2" />
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  {...register('name', { 
-                    required: 'Name is required',
-                    minLength: { value: 2, message: 'Name must be at least 2 characters' }
-                  })}
-                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all text-white placeholder-gray-400"
-                  placeholder="Enter your full name"
-                />
-                {errors.name && (
-                  <p className="text-red-400 text-sm mt-1">{errors.name.message}</p>
-                )}
-              </div>
-
-              {/* Phone Number Field */}
-              <div>
-                <label className="block text-sm font-medium text-blue-200 mb-2">
-                  <Phone className="w-4 h-4 inline mr-2" />
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  {...register('phoneNumber', { 
-                    required: 'Phone number is required',
-                    pattern: { 
-                      value: /^[0-9]{10}$/, 
-                      message: 'Please enter a valid 10-digit phone number' 
-                    }
-                  })}
-                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all text-white placeholder-gray-400"
-                  placeholder="Enter 10-digit phone number"
-                  maxLength="10"
-                />
-                {errors.phoneNumber && (
-                  <p className="text-red-400 text-sm mt-1">{errors.phoneNumber.message}</p>
-                )}
-              </div>
-
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center shadow-lg"
-              >
-                {isLoading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                ) : (
-                  <>
-                    Send OTP
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </>
-                )}
-              </Button>
-            </form>
-
-            {/* Info */}
-            <div className="mt-6 p-4 bg-blue-900/30 border border-blue-700/50 rounded-lg">
-              <p className="text-sm text-blue-300 text-center">
-                We'll send a verification code to your phone number to book your appointment.
-              </p>
+    <div className="min-h-screen w-full relative bg-white">
+      {/* Header */}
+      <div className="relative z-10 p-6 border-b border-gray-200">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
+              <Shield className="w-5 h-5 text-white" />
             </div>
+            <span className="text-black text-xl font-bold">QueueSmart</span>
           </div>
-
-          {/* Footer */}
-          <div className="text-center mt-8">
-            <p className="text-sm text-gray-400">
-              Secure • Fast • Reliable
-            </p>
+          <Button
+            onClick={() => navigate('/booking')}
+            className="bg-black hover:bg-gray-800 text-white px-6 py-2 rounded-lg font-semibold transition-all duration-300 flex items-center"
+          >
+            <Copy className="w-4 h-4 mr-2" />
+            Book Appointment
+          </Button>
+        </div>
+      </div>
+      
+      {/* Main Content */}
+      <div className="relative z-10 min-h-screen flex items-center justify-center px-6">
+        <div className="text-center max-w-4xl mx-auto">
+          {/* Banner */}
+          <div className="inline-flex items-center px-4 py-2 bg-gray-100 border border-gray-200 rounded-full text-sm text-black mb-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+            <span>5+ New Features</span>
+            <Zap className="w-4 h-4 ml-2 text-black" />
+            <span className="ml-2">Read More →</span>
+          </div>
+          
+          {/* Main Heading */}
+          <h1 className="text-5xl lg:text-7xl font-bold text-black mb-6 leading-tight">
+            Say Goodbye to
+            <span className="block text-gray-600">Long Queues</span>
+          </h1>
+          
+          {/* Description */}
+          <p className="text-lg lg:text-xl text-gray-600 mb-12 leading-relaxed max-w-3xl mx-auto">
+            Experience Faster, Smarter, and Stress-Free Hospital Visits. Professional-grade queue management system with real-time updates and seamless booking.
+          </p>
+          
+          {/* Main CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-6 justify-center mb-8">
+            <Button
+              onClick={() => navigate('/booking')}
+              className="bg-white text-black px-8 py-6 rounded-2xl font-bold text-lg transition-all duration-300 flex items-center justify-center border border-black shadow-2xl hover:shadow-black/25 transform hover:scale-105 min-w-[280px]"
+            >
+              <div className="text-left">
+                <div className="font-bold text-xl">Book Appointment</div>
+                <div className="text-sm text-black font-medium">Quick & Easy Booking</div>
+              </div>
+            </Button>
+            
+            <Button
+              onClick={() => navigate('/dashboard')}
+              className="bg-white text-black px-8 py-6 rounded-2xl font-bold text-lg transition-all duration-300 flex items-center justify-center border border-black shadow-2xl hover:shadow-black/25 transform hover:scale-105 min-w-[280px]"
+            >
+              <div className="text-left">
+                <div className="font-bold text-xl">Live Preview</div>
+                <div className="text-sm text-black font-medium">See appointments in action</div>
+              </div>
+            </Button>
+          </div>
+          
+          {/* Secondary Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              onClick={() => navigate('/doctor')}
+              className="bg-gray-100 hover:bg-gray-200 border-2 border-gray-300 text-black px-6 py-3 rounded-xl font-medium transition-all duration-300 flex items-center justify-center hover:border-gray-400"
+            >
+              <User className="w-4 h-4 mr-2" />
+              Doctor Dashboard
+            </Button>
+            
+            <Button
+              onClick={() => navigate('/verify-otp')}
+              className="bg-gray-100 hover:bg-gray-200 border-2 border-gray-300 text-black px-6 py-3 rounded-xl font-medium transition-all duration-300 flex items-center justify-center hover:border-gray-400"
+            >
+              <span className="mr-2">&lt;/&gt;</span>
+              Login with OTP
+            </Button>
           </div>
         </div>
       </div>

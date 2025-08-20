@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Phone, Calendar, Clock, User, Stethoscope, CheckCircle, AlertCircle, XCircle, ChevronDown } from 'lucide-react'
+import { BookOpen, Phone, Calendar, Clock, User, Stethoscope, CheckCircle, AlertCircle, XCircle, ChevronDown, ArrowRight, Star, Zap, Shield } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { useAuth } from '../context/AuthContext'
 import { appointmentsAPI, doctorsAPI } from '../services/supabaseApi'
@@ -91,8 +91,8 @@ const UserDashboard = () => {
       setAppointments(filteredAppts)
       toast.success(`Showing appointments for ${doctor.name}`, {
         style: {
-          background: '#10b981',
-          color: '#fff',
+          background: '#000000',
+          color: '#ffffff',
           fontSize: '14px',
           padding: '12px',
           borderRadius: '8px'
@@ -103,8 +103,8 @@ const UserDashboard = () => {
       setAppointments(allAppointments)
       toast.success('Showing all appointments', {
         style: {
-          background: '#10b981',
-          color: '#fff',
+          background: '#000000',
+          color: '#ffffff',
           fontSize: '14px',
           padding: '12px',
           borderRadius: '8px'
@@ -186,58 +186,76 @@ const UserDashboard = () => {
   // Show landing experience when no user
   if (!user) {
     return (
-      <div style={{ minHeight: '100vh', padding: '20px', backgroundColor: '#f5f5f5' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
+      <div className="min-h-screen bg-white">
+        <div className="max-w-7xl mx-auto px-6 py-20">
           
           {/* Hero Section */}
-          <div style={{ marginBottom: '40px', padding: '40px 0' }}>
-            <h1 style={{ fontSize: '2.5rem', marginBottom: '20px', color: '#333' }}>
-              Welcome to QueueManagement
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center px-4 py-2 bg-black text-white rounded-full text-sm font-medium shadow-lg mb-8">
+              <Star className="w-4 h-4 mr-2" />
+              Welcome to QueueSmart
+            </div>
+            
+            <h1 className="text-5xl lg:text-6xl font-bold text-black mb-6 leading-tight">
+              Experience Seamless
+              <span className="block bg-gradient-to-r from-black to-gray-600 bg-clip-text text-transparent">
+                Healthcare
+              </span>
             </h1>
-            <p style={{ fontSize: '1.2rem', color: '#666', marginBottom: '30px' }}>
-              Experience Seamless, Real-Time Appointment Management at Ashok Hospital
+            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+              Join thousands of patients who trust QueueSmart for their healthcare needs. 
+              Book appointments instantly and skip the wait.
             </p>
           </div>
 
           {/* Quick Actions */}
-          <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginBottom: '40px' }}>
+          <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
             <Button
               onClick={() => navigate('/booking')}
-              style={{ padding: '15px 30px', fontSize: '1.1rem' }}
+              className="bg-black hover:bg-gray-800 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-2xl hover:shadow-black/25 transition-all duration-300 transform hover:scale-105"
             >
-              <BookOpen style={{ marginRight: '8px' }} />
+              <BookOpen className="w-5 h-5 mr-2" />
               Book Appointment
             </Button>
             <Button
               onClick={() => navigate('/verify-otp')}
-              style={{ padding: '15px 30px', fontSize: '1.1rem' }}
+              className="border-2 border-black text-black hover:bg-black hover:text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105"
             >
-              <Phone style={{ marginRight: '8px' }} />
+              <Phone className="w-5 h-5 mr-2" />
               Login with OTP
             </Button>
             <Button
               onClick={() => navigate('/doctor')}
-              style={{ padding: '15px 30px', fontSize: '1.1rem', backgroundColor: '#10b981' }}
+              className="bg-gray-800 hover:bg-black text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105"
             >
               👨‍⚕️ Doctor Dashboard
             </Button>
           </div>
 
           {/* Features Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-            <div style={{ padding: '20px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-              <h3 style={{ fontSize: '1.3rem', marginBottom: '10px', color: '#333' }}>Real-Time Tracking</h3>
-              <p style={{ color: '#666' }}>Monitor your appointment status live with instant updates</p>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="bg-white p-8 rounded-2xl border-2 border-gray-200 hover:border-black transition-all duration-300 transform hover:scale-105 shadow-lg">
+              <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mb-6">
+                <Zap className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-black mb-4">Real-Time Tracking</h3>
+              <p className="text-gray-600">Monitor your appointment status live with instant updates</p>
             </div>
 
-            <div style={{ padding: '20px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-              <h3 style={{ fontSize: '1.3rem', marginBottom: '10px', color: '#333' }}>Expert Doctors</h3>
-              <p style={{ color: '#666' }}>Choose from our team of experienced healthcare professionals</p>
+            <div className="bg-white p-8 rounded-2xl border-2 border-gray-200 hover:border-black transition-all duration-300 transform hover:scale-105 shadow-lg">
+              <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mb-6">
+                <Stethoscope className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-black mb-4">Expert Doctors</h3>
+              <p className="text-gray-600">Choose from our team of experienced healthcare professionals</p>
             </div>
 
-            <div style={{ padding: '20px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-              <h3 style={{ fontSize: '1.3rem', marginBottom: '10px', color: '#333' }}>Secure & Private</h3>
-              <p style={{ color: '#666' }}>Your health information is protected with bank-level security</p>
+            <div className="bg-white p-8 rounded-2xl border-2 border-gray-200 hover:border-black transition-all duration-300 transform hover:scale-105 shadow-lg">
+              <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mb-6">
+                <Shield className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-black mb-4">Secure & Private</h3>
+              <p className="text-gray-600">Your health information is protected with bank-level security</p>
             </div>
           </div>
         </div>
@@ -247,92 +265,61 @@ const UserDashboard = () => {
 
   // Show dashboard when user exists
   return (
-    <div style={{ minHeight: '100vh', padding: '20px', backgroundColor: '#f5f5f5' }}>
-      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-6 py-8">
         
         {/* Header */}
-        <div className='font-bold item-center' style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <h1 style={{ fontSize: '2.5rem', marginBottom: '20px', color: '#333' }}>
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center px-4 py-2 bg-black text-white rounded-full text-sm font-medium shadow-lg mb-6">
+            <Star className="w-4 h-4 mr-2" />
+            Welcome Back
+          </div>
+          
+          <h1 className="text-4xl lg:text-5xl font-bold text-black mb-4">
             Welcome, {user.name}!
           </h1>
-          <p style={{ fontSize: '1.2rem', color: '#666', marginBottom: '20px', fontWeight: 600 }}>
+          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             Skip the wait, join the queue, and see your doctor faster!
           </p>
         </div>
 
         {/* Quick Actions */}
-        <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginBottom: '40px' }}>
+        <div className="flex justify-center mb-12">
           <Button
             onClick={() => setShowBookingForm(true)}
-            style={{ padding: '15px 30px', fontSize: '1.1rem' }}
+            className="bg-black hover:bg-gray-800 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-2xl hover:shadow-black/25 transition-all duration-300 transform hover:scale-105"
           >
+            <BookOpen className="w-5 h-5 mr-2" />
             Book Appointment
           </Button>
         </div>
 
-        {/* User Info Card
-        <div style={{ 
-          padding: '20px', 
-          backgroundColor: 'white', 
-          borderRadius: '8px', 
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          marginBottom: '30px',
-          textAlign: 'center'
-        }}>
-          <div style={{ 
-            padding: '15px', 
-            backgroundColor: '#f8f9fa', 
-            borderRadius: '6px',
-            border: '1px solid #e9ecef',
-            display: 'inline-block'
-          }}>
-            <p style={{ margin: '0', color: '#495057' }}>
-              <strong>Phone:</strong> {user.phoneNumber} | <strong>Age:</strong> {user.age} | <strong>Gender:</strong> {user.gender}
-            </p>
-          </div>
-        </div> */}
-
         {/* Doctor Selection Section */}
-        <div style={{ 
-          padding: '20px', 
-          backgroundColor: 'white', 
-          borderRadius: '8px', 
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          marginBottom: '20px'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <h4 style={{ fontSize: '1.2rem', color: '#333', margin: 0 , fontWeight: 600 }}>
+        <div className="bg-white border-2 border-gray-200 rounded-2xl shadow-lg p-8 mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <h4 className="text-2xl font-bold text-black">
               Filter by Doctor
             </h4>
-            <span style={{ fontSize: '0.9rem', color: '#666' }}>
+            <span className="text-gray-600 font-medium">
               {selectedDoctor ? `Showing: ${selectedDoctor.name}` : 'Showing: All Doctors'}
             </span>
           </div>
           
-          <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="flex gap-4 items-center flex-wrap">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  className={`flex items-center gap-2 px-5 py-3 rounded-lg text-white font-semibold transition-all duration-200 shadow-md
-                    ${selectedDoctor ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-black hover:bg-gray-900'}
-                    focus:outline-none focus:ring-2 focus:ring-emerald-400`}
+                  className="bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 shadow-lg"
                 >
                   {selectedDoctor ? selectedDoctor.name : 'Select Doctor'}
-                  <ChevronDown style={{ width: '16px', height: '16px' }} />
+                  <ChevronDown className="w-4 h-4 ml-2" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent 
-                style={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-                  padding: '8px',
-                  minWidth: '250px'
-                }}
+                className="bg-white border-2 border-gray-200 rounded-xl shadow-xl p-2 min-w-[280px]"
               >
-                <div style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151' }}>
+                <div className="p-3 border-b-2 border-gray-200 mb-2">
+                  <span className="text-sm font-bold text-black">
                     Available Doctors
                   </span>
                 </div>
@@ -340,39 +327,14 @@ const UserDashboard = () => {
                 {/* Show All Option */}
                 <DropdownMenuItem
                   onClick={() => handleDoctorSelect(null)}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    border: '1px solid transparent',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#f3f4f6'
-                    e.target.style.borderColor = '#10b981'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = 'transparent'
-                    e.target.style.borderColor = 'transparent'
-                  }}
+                  className="p-3 rounded-lg cursor-pointer hover:bg-gray-100 transition-all duration-200 flex items-center gap-3"
                 >
-                  <div style={{ 
-                    width: '32px', 
-                    height: '32px', 
-                    backgroundColor: '#10b981', 
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <User style={{ width: '16px', height: '16px', color: 'white' }} />
+                  <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <div style={{ fontWeight: '500', color: '#111827' }}>Show All Doctors</div>
-                    <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                    <div className="font-semibold text-black">Show All Doctors</div>
+                    <div className="text-sm text-gray-600">
                       View appointments from all doctors
                     </div>
                   </div>
@@ -383,57 +345,17 @@ const UserDashboard = () => {
                   <DropdownMenuItem
                     key={doctor.id}
                     onClick={() => handleDoctorSelect(doctor)}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      border: '1px solid transparent',
-                      transition: 'all 0.2s',
-                      backgroundColor: selectedDoctor?.id === doctor.id ? '#f0fdf4' : 'transparent',
-                      borderColor: selectedDoctor?.id === doctor.id ? '#10b981' : 'transparent'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (selectedDoctor?.id !== doctor.id) {
-                        e.target.style.backgroundColor = '#f3f4f6'
-                        e.target.style.borderColor = '#10b981'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (selectedDoctor?.id !== doctor.id) {
-                        e.target.style.backgroundColor = selectedDoctor?.id === doctor.id ? '#f0fdf4' : 'transparent'
-                        e.target.style.borderColor = selectedDoctor?.id === doctor.id ? '#10b981' : 'transparent'
-                      }
-                    }}
+                    className="p-3 rounded-lg cursor-pointer hover:bg-gray-100 transition-all duration-200 flex items-center gap-3"
                   >
-                    <div style={{ 
-                      width: '32px', 
-                      height: '32px', 
-                      backgroundColor: '#10b981', 
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <Stethoscope style={{ width: '16px', height: '16px', color: 'white' }} />
+                    <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center">
+                      <Stethoscope className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <div style={{ fontWeight: '500', color: '#111827' }}>{doctor.name}</div>
-                      <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                      <div className="font-semibold text-black">{doctor.name}</div>
+                      <div className="text-sm text-gray-600">
                         {doctor.specialization} • Room {doctor.room}
                       </div>
                     </div>
-                    {selectedDoctor?.id === doctor.id && (
-                      <div style={{ 
-                        width: '8px', 
-                        height: '8px', 
-                        backgroundColor: '#10b981', 
-                        borderRadius: '50%',
-                        marginLeft: 'auto'
-                      }}></div>
-                    )}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -443,15 +365,7 @@ const UserDashboard = () => {
             {selectedDoctor && (
               <Button
                 onClick={() => handleDoctorSelect(null)}
-                style={{ 
-                  padding: '8px 16px', 
-                  fontSize: '0.9rem',
-                  backgroundColor: '#f3f4f6',
-                  color: '#6b7280',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  cursor: 'pointer'
-                }}
+                className="border-2 border-gray-300 text-gray-600 hover:bg-gray-100 px-4 py-3 rounded-xl font-semibold transition-all duration-300"
               >
                 Clear Filter
               </Button>
@@ -460,44 +374,26 @@ const UserDashboard = () => {
         </div>
 
         {/* Appointments Section */}
-        <div style={{ 
-          padding: '30px', 
-          backgroundColor: 'white', 
-          borderRadius: '8px', 
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          marginBottom: '30px'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '1.5rem', color: '#333', margin: 0 }}>
+        <div className="bg-white border-2 border-gray-200 rounded-2xl shadow-lg p-8">
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="text-3xl font-bold text-black">
               Your Appointments
               {selectedDoctor && (
-                <span style={{ fontSize: '1rem', color: '#10b981', marginLeft: '10px' }}>
+                <span className="text-xl text-gray-600 ml-3">
                   • {selectedDoctor.name}
                 </span>
               )}
             </h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ 
-                width: '8px', 
-                height: '8px', 
-                backgroundColor: '#10b981', 
-                borderRadius: '50%',
-                animation: 'pulse 2s infinite'
-              }}></div>
-              <span style={{ fontSize: '0.9rem', color: '#666' }}>Live Updates Active</span>
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-gray-600 font-medium">Live Updates Active</span>
             </div>
           </div>
 
           {/* Current Appointment Status */}
           {appointments.length > 0 && appointments.some(apt => apt.status === 'waiting' || apt.status === 'in-progress') && (
-            <div style={{ 
-              padding: '20px', 
-              backgroundColor: '#f0fdf4', 
-              borderRadius: '8px', 
-              border: '2px solid #10b981',
-              marginBottom: '20px'
-            }}>
-              <h4 style={{ fontSize: '1.1rem', color: '#065f46', marginBottom: '15px', textAlign: 'center' }}>
+            <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-6 mb-8">
+              <h4 className="text-xl font-bold text-green-800 mb-4 text-center">
                 🚀 Current Appointment Status
               </h4>
               {appointments
@@ -508,63 +404,37 @@ const UserDashboard = () => {
                   const StatusIcon = statusInfo.icon
                   
                   return (
-                    <div key={appointment.id} style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between',
-                      padding: '15px',
-                      backgroundColor: 'white',
-                      borderRadius: '8px',
-                      border: '1px solid #d1fae5',
-                      marginBottom: index < appointments.filter(apt => apt.status === 'waiting' || apt.status === 'in-progress').length - 1 ? '10px' : '0'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <div style={{
-                          backgroundColor: '#10b981',
-                          color: 'white',
-                          padding: '12px 16px',
-                          borderRadius: '25px',
-                          fontSize: '1.2rem',
-                          fontWeight: 'bold',
-                          minWidth: '60px',
-                          textAlign: 'center'
-                        }}>
-                          #{appointment.queue_number || 'N/A'}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: '600', color: '#065f46', marginBottom: '5px' }}>
-                            {appointment.doctor?.name || 'Unknown Doctor'}
+                    <div key={appointment.id} className="bg-white border-2 border-green-200 rounded-xl p-6 mb-4 last:mb-0">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-6">
+                          <div className="bg-green-600 text-white px-6 py-3 rounded-full text-xl font-bold">
+                            #{appointment.queue_number || 'N/A'}
                           </div>
-                          <div style={{ fontSize: '0.9rem', color: '#047857' }}>
-                            {appointment.appointment_date ? formatDate(appointment.appointment_date) : 'N/A'} at {appointment.time_slot || 'N/A'}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <span style={{
-                          backgroundColor: statusInfo.bgColor,
-                          color: statusInfo.color,
-                          padding: '8px 16px',
-                          borderRadius: '20px',
-                          fontSize: '0.9rem',
-                          fontWeight: '500',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          <StatusIcon style={{ width: '16px', height: '16px' }} />
-                          {statusInfo.text}
-                        </span>
-                        
-                        {appointment.estimated_wait_time && (
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#10b981' }}>
-                              {appointment.estimated_wait_time} min
+                          <div>
+                            <div className="text-xl font-bold text-green-800 mb-1">
+                              {appointment.doctor?.name || 'Unknown Doctor'}
                             </div>
-                            <div style={{ fontSize: '0.8rem', color: '#047857' }}>Est. Wait</div>
+                            <div className="text-green-600">
+                              {appointment.appointment_date ? formatDate(appointment.appointment_date) : 'N/A'} at {appointment.time_slot || 'N/A'}
+                            </div>
                           </div>
-                        )}
+                        </div>
+                        
+                        <div className="flex items-center gap-6">
+                          <span className={`${statusInfo.bgColor} ${statusInfo.color} px-4 py-2 rounded-full font-semibold flex items-center gap-2`}>
+                            <StatusIcon className="w-5 h-5" />
+                            {statusInfo.text}
+                          </span>
+                          
+                          {appointment.estimated_wait_time && (
+                            <div className="text-center">
+                              <div className="text-2xl font-bold text-green-600">
+                                {appointment.estimated_wait_time} min
+                              </div>
+                              <div className="text-sm text-green-600">Est. Wait</div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )
@@ -574,97 +444,55 @@ const UserDashboard = () => {
 
           {/* Appointment Statistics */}
           {appointments.length > 0 && (
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
-              gap: '15px', 
-              marginBottom: '20px' 
-            }}>
-              <div style={{ 
-                padding: '15px', 
-                backgroundColor: '#f0f9ff', 
-                borderRadius: '8px', 
-                border: '1px solid #0ea5e9',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0c4a6e', marginBottom: '5px' }}>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 text-center">
+                <div className="text-3xl font-bold text-blue-800 mb-2">
                   {appointments.length}
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#0c4a6e' }}>
+                <div className="text-blue-600 font-semibold">
                   {selectedDoctor ? 'Appointments' : 'Total Appointments'}
                 </div>
-                {selectedDoctor && (
-                  <div style={{ fontSize: '0.7rem', color: '#0ea5e9', marginTop: '2px' }}>
-                    for {selectedDoctor.name}
-                  </div>
-                )}
               </div>
               
-              <div style={{ 
-                padding: '15px', 
-                backgroundColor: '#fef3c7', 
-                borderRadius: '8px', 
-                border: '1px solid #f59e0b',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#92400e', marginBottom: '5px' }}>
+              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-6 text-center">
+                <div className="text-3xl font-bold text-yellow-800 mb-2">
                   {appointments.filter(apt => apt.status === 'waiting').length}
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#92400e' }}>Waiting</div>
+                <div className="text-yellow-600 font-semibold">Waiting</div>
               </div>
               
-              <div style={{ 
-                padding: '15px', 
-                backgroundColor: '#dbeafe', 
-                borderRadius: '8px', 
-                border: '1px solid #3b82f6',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e40af', marginBottom: '5px' }}>
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 text-center">
+                <div className="text-3xl font-bold text-blue-800 mb-2">
                   {appointments.filter(apt => apt.status === 'in-progress').length}
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#1e40af' }}>In Consultation</div>
+                <div className="text-blue-600 font-semibold">In Consultation</div>
               </div>
               
-              <div style={{ 
-                padding: '15px', 
-                backgroundColor: '#dcfce7', 
-                borderRadius: '8px', 
-                border: '1px solid #10b981',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#065f46', marginBottom: '5px' }}>
+              <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6 text-center">
+                <div className="text-3xl font-bold text-green-800 mb-2">
                   {appointments.filter(apt => apt.status === 'completed').length}
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#065f46' }}>Completed</div>
+                <div className="text-green-600 font-semibold">Completed</div>
               </div>
             </div>
           )}
 
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div style={{ 
-                width: '40px', 
-                height: '40px', 
-                border: '4px solid #f3f3f3',
-                borderTop: '4px solid #10b981',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite',
-                margin: '0 auto 20px'
-              }}></div>
-              <p style={{ color: '#666' }}>Loading your appointments...</p>
+            <div className="text-center py-16">
+              <div className="w-12 h-12 border-4 border-gray-200 border-t-black rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600 text-lg">Loading your appointments...</p>
             </div>
           ) : appointments.length > 0 ? (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="overflow-x-auto">
+              <table className="w-full">
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #e9ecef' }}>
-                    <th style={{ padding: '15px', textAlign: 'left', color: '#495057', fontWeight: '600' }}>Token No.</th>
-                    <th style={{ padding: '15px', textAlign: 'left', color: '#495057', fontWeight: '600' }}>Date</th>
-                    <th style={{ padding: '15px', textAlign: 'left', color: '#495057', fontWeight: '600' }}>Time</th>
-                    <th style={{ padding: '15px', textAlign: 'left', color: '#495057', fontWeight: '600' }}>Consultant</th>
-                    <th style={{ padding: '15px', textAlign: 'left', color: '#495057', fontWeight: '600' }}>Status</th>
-                    <th style={{ padding: '15px', textAlign: 'left', color: '#495057', fontWeight: '600' }}>Queue</th>
+                  <tr className="border-b-2 border-gray-200">
+                    <th className="text-left py-4 px-6 font-bold text-black">Token No.</th>
+                    <th className="text-left py-4 px-6 font-bold text-black">Date</th>
+                    <th className="text-left py-4 px-6 font-bold text-black">Time</th>
+                    <th className="text-left py-4 px-6 font-bold text-black">Consultant</th>
+                    <th className="text-left py-4 px-6 font-bold text-black">Status</th>
+                    <th className="text-left py-4 px-6 font-bold text-black">Queue</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -673,69 +501,47 @@ const UserDashboard = () => {
                     const StatusIcon = statusInfo.icon
                     
                     return (
-                      <tr key={appointment.id || index} style={{ 
-                        borderBottom: '1px solid #e9ecef',
-                        backgroundColor: index % 2 === 0 ? '#f8f9fa' : 'white'
-                      }}>
-                        <td style={{ padding: '15px' }}>
-                          <span style={{
-                            backgroundColor: '#10b981',
-                            color: 'white',
-                            padding: '8px 12px',
-                            borderRadius: '20px',
-                            fontSize: '0.9rem',
-                            fontWeight: 'bold',
-                            display: 'inline-block'
-                          }}>
+                      <tr key={appointment.id || index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200">
+                        <td className="py-4 px-6">
+                          <span className="bg-black text-white px-4 py-2 rounded-full font-bold">
                             #{appointment.queue_number || 'N/A'}
                           </span>
                         </td>
-                        <td style={{ padding: '15px', color: '#495057' }}>
+                        <td className="py-4 px-6 text-gray-700 font-medium">
                           {appointment.appointment_date ? formatDate(appointment.appointment_date) : 'N/A'}
                         </td>
-                        <td style={{ padding: '15px', color: '#495057' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Clock style={{ width: '16px', height: '16px', color: '#666' }} />
+                        <td className="py-4 px-6 text-gray-700">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-gray-500" />
                             {appointment.time_slot || 'N/A'}
                           </div>
                         </td>
-                        <td style={{ padding: '15px', color: '#495057' }}>
+                        <td className="py-4 px-6 text-gray-700">
                           {appointment.doctor ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <Stethoscope style={{ width: '16px', height: '16px', color: '#666' }} />
+                            <div className="flex items-center gap-2">
+                              <Stethoscope className="w-4 h-4 text-gray-500" />
                               <div>
-                                <div style={{ fontWeight: '500' }}>{appointment.doctor.name}</div>
-                                <div style={{ fontSize: '0.8rem', color: '#666' }}>
+                                <div className="font-semibold">{appointment.doctor.name}</div>
+                                <div className="text-sm text-gray-500">
                                   {appointment.doctor.specialization} • Room {appointment.doctor.room}
                                 </div>
                               </div>
                             </div>
                           ) : 'N/A'}
                         </td>
-                        <td style={{ padding: '15px' }}>
-                          <span style={{
-                            backgroundColor: statusInfo.bgColor,
-                            color: statusInfo.color,
-                            padding: '6px 12px',
-                            borderRadius: '20px',
-                            fontSize: '0.8rem',
-                            fontWeight: '500',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            width: 'fit-content'
-                          }}>
-                            <StatusIcon style={{ width: '14px', height: '14px' }} />
+                        <td className="py-4 px-6">
+                          <span className={`${statusInfo.bgColor} ${statusInfo.color} px-3 py-1 rounded-full font-semibold flex items-center gap-1 w-fit`}>
+                            <StatusIcon className="w-4 h-4" />
                             {statusInfo.text}
                           </span>
                         </td>
-                        <td style={{ padding: '15px', color: '#495057' }}>
+                        <td className="py-4 px-6 text-gray-700">
                           {appointment.estimated_wait_time ? (
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#10b981' }}>
+                            <div className="text-center">
+                              <div className="text-xl font-bold text-green-600">
                                 {appointment.estimated_wait_time} min
                               </div>
-                              <div style={{ fontSize: '0.8rem', color: '#666' }}>Est. Wait</div>
+                              <div className="text-sm text-gray-500">Est. Wait</div>
                             </div>
                           ) : 'N/A'}
                         </td>
@@ -746,23 +552,14 @@ const UserDashboard = () => {
               </table>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div style={{ 
-                width: '80px', 
-                height: '80px', 
-                backgroundColor: '#f8f9fa',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 20px'
-              }}>
-                <Calendar style={{ width: '40px', height: '40px', color: '#666' }} />
+            <div className="text-center py-16">
+              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Calendar className="w-12 h-12 text-gray-400" />
               </div>
-              <h4 style={{ fontSize: '1.2rem', color: '#333', marginBottom: '10px' }}>
+              <h4 className="text-2xl font-bold text-black mb-4">
                 {selectedDoctor ? `No Appointments with ${selectedDoctor.name}` : 'No Appointments Yet'}
               </h4>
-              <p style={{ color: '#666', marginBottom: '20px' }}>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">
                 {selectedDoctor 
                   ? `You haven't booked any appointments with ${selectedDoctor.name} yet.`
                   : "You haven't booked any appointments yet. Click 'Book Appointment' to schedule your first visit."
@@ -771,30 +568,24 @@ const UserDashboard = () => {
               {!selectedDoctor && (
                 <Button
                   onClick={() => setShowBookingForm(true)}
-                  style={{ padding: '12px 24px', fontSize: '1rem' }}
+                  className="bg-black hover:bg-gray-800 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg transition-all duration-300 transform hover:scale-105"
                 >
-                  <BookOpen style={{ marginRight: '8px', width: '16px', height: '16px' }} />
+                  <BookOpen className="w-5 h-5 mr-2" />
                   Book Your First Appointment
                 </Button>
               )}
               {selectedDoctor && (
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <div className="flex gap-4 justify-center">
                   <Button
                     onClick={() => setShowBookingForm(true)}
-                    style={{ padding: '12px 24px', fontSize: '1rem' }}
+                    className="bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300"
                   >
-                    <BookOpen style={{ marginRight: '8px', width: '16px', height: '16px' }} />
+                    <BookOpen className="w-4 h-4 mr-2" />
                     Book with {selectedDoctor.name}
                   </Button>
                   <Button
                     onClick={() => handleDoctorSelect(null)}
-                    style={{ 
-                      padding: '12px 24px', 
-                      fontSize: '1rem',
-                      backgroundColor: '#f3f4f6',
-                      color: '#6b7280',
-                      border: '1px solid #d1d5db'
-                    }}
+                    className="border-2 border-gray-300 text-gray-600 hover:bg-gray-100 px-6 py-3 rounded-xl font-semibold transition-all duration-300"
                   >
                     Show All Doctors
                   </Button>
@@ -809,18 +600,6 @@ const UserDashboard = () => {
       {showBookingForm && (
         <BookingForm onBookingSuccess={handleBookingSuccess} />
       )}
-
-      {/* CSS for animations */}
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-      `}</style>
     </div>
   )
 }

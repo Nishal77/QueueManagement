@@ -4,11 +4,12 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../components/ui/form'
-import { Calendar, Clock, User, Phone, Stethoscope, CheckCircle, ArrowRight, ArrowLeft, Loader2, Mail, Shield, X } from 'lucide-react'
+import { Calendar, Clock, User, Phone, Stethoscope, CheckCircle, ArrowRight, ArrowLeft, Loader2, Mail, Shield, X, ChevronRight } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'react-hot-toast'
 import { authAPI, doctorsAPI, slotsAPI, appointmentsAPI } from '../services/supabaseApi'
 import { useAuth } from '../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import moment from 'moment'
 
 const BookingForm = ({ onBookingSuccess }) => {
@@ -23,14 +24,18 @@ const BookingForm = ({ onBookingSuccess }) => {
   const [otpVerified, setOtpVerified] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
   const { login, user } = useAuth()
+  const navigate = useNavigate()
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+  const form = useForm({
     defaultValues: {
       name: '',
       phoneNumber: '',
       otp: '',
       age: '',
-      gender: ''
+      gender: '',
+      doctorId: '',
+      appointmentDate: '',
+      timeSlot: ''
     }
   })
 
@@ -50,56 +55,31 @@ const BookingForm = ({ onBookingSuccess }) => {
   const fetchDoctors = async () => {
     try {
       const response = await doctorsAPI.getAll()
-      console.log('👨‍⚕️ Doctors API response:', response)
-      
       if (response && response.data && response.data.success) {
-        const doctorsList = response.data.doctors || []
-        console.log('✅ Doctors loaded:', doctorsList)
-        console.log('🔍 Doctor structure check:')
-        doctorsList.forEach((doctor, index) => {
-          console.log(`  Doctor ${index + 1}:`, {
-            id: doctor.id,
-            name: doctor.name,
-            specialization: doctor.specialization
-          })
-        })
-        setDoctors(doctorsList)
+        setDoctors(response.data.doctors || [])
       } else {
-        console.error('❌ Doctors API returned error:', response)
         setDoctors([])
         toast.error('Failed to load doctors')
       }
     } catch (error) {
-      console.error('❌ Error fetching doctors:', error)
+      console.error('Error fetching doctors:', error)
       setDoctors([])
       toast.error('Failed to load doctors')
     }
   }
 
   const fetchAvailableSlots = async (date) => {
-    console.log('🔍 fetchAvailableSlots called with:')
-    console.log('  Date:', date)
-    console.log('  Selected Doctor:', selectedDoctor)
-    console.log('  Doctor ID:', selectedDoctor?.id)
-    
-    if (!selectedDoctor || !date) {
-      console.log('❌ Missing required data:')
-      console.log('  selectedDoctor:', selectedDoctor)
-      console.log('  date:', date)
-      return
-    }
+    if (!selectedDoctor || !date) return
     
     try {
       setLoading(true)
       
-      // Test: Generate slots locally first to verify the logic
-      console.log('🧪 Testing local slot generation...')
+      // Generate local slots for testing
       const testSlots = []
-      for (let hour = 9; hour < 13; hour++) { // Changed from 12 to 13
-        for (let minute = 0; minute < 60; minute += 10) {
+      for (let hour = 9; hour < 13; hour++) {
+        for (let minute = 0; minute < 60; minute += 20) {
           const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
           
-          // Format display time properly
           let displayHour = hour
           let ampm = 'AM'
           
@@ -115,58 +95,48 @@ const BookingForm = ({ onBookingSuccess }) => {
           testSlots.push({ time: timeSlot, displayTime, available: true })
         }
       }
-      console.log('✅ Local test slots generated:', testSlots.length)
       
       const response = await slotsAPI.getAvailable({ 
         doctorId: selectedDoctor.id, 
         date: date 
       })
-      console.log('📅 Slots API response:', response)
       
       if (response && response.data && response.data.success) {
-        const slots = response.data.availableSlots || []
-        console.log('✅ Available slots from API:', slots)
-        setAvailableSlots(slots)
+        setAvailableSlots(response.data.availableSlots || [])
       } else {
-        console.error('❌ Slots API returned error:', response)
-        console.log('⚠️ Falling back to local slots')
         setAvailableSlots(testSlots)
-        toast.error('Failed to load available time slots from API, using local slots')
       }
     } catch (error) {
-      console.error('❌ Error fetching slots:', error)
-      console.log('⚠️ Falling back to local slots')
-              // Generate fallback slots
-        const fallbackSlots = []
-        for (let hour = 9; hour < 13; hour++) { // Changed from 12 to 13
-          for (let minute = 0; minute < 60; minute += 10) {
-            const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-            
-            // Format display time properly
-            let displayHour = hour
-            let ampm = 'AM'
-            
-            if (hour === 12) {
-              displayHour = 12
-              ampm = 'PM'
-            } else if (hour > 12) {
-              displayHour = hour - 12
-              ampm = 'PM'
-            }
-            
-            const displayTime = `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`
-            fallbackSlots.push({ time: timeSlot, displayTime, available: true })
+      console.error('Error fetching slots:', error)
+      // Generate fallback slots
+      const fallbackSlots = []
+      for (let hour = 9; hour < 13; hour++) {
+        for (let minute = 0; minute < 60; minute += 20) {
+          const timeSlot = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+          
+          let displayHour = hour
+          let ampm = 'AM'
+          
+          if (hour === 12) {
+            displayHour = 12
+            ampm = 'PM'
+          } else if (hour > 12) {
+            displayHour = hour - 12
+            ampm = 'PM'
           }
+          
+          const displayTime = `${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}`
+          fallbackSlots.push({ time: timeSlot, displayTime, available: true })
         }
+      }
       setAvailableSlots(fallbackSlots)
-      toast.error('Failed to load available time slots')
     } finally {
       setLoading(false)
     }
   }
 
   const handleSendOTP = async () => {
-    const { name, phoneNumber } = watch()
+    const { name, phoneNumber } = form.getValues()
     
     if (!name?.trim() || !phoneNumber?.trim()) {
       toast.error('Please enter both name and phone number')
@@ -181,147 +151,54 @@ const BookingForm = ({ onBookingSuccess }) => {
     try {
       setLoading(true)
       
-      // Show loading toast
-      toast.loading('📱 Sending OTP...', { duration: 2000 })
-      
-      console.log('📱 Sending OTP to:', phoneNumber)
-      console.log('👤 Name:', name)
-      
       const response = await authAPI.sendOTP({ name, phoneNumber })
-      console.log('📤 OTP API Response:', response)
       
       if (response.data.success) {
         setOtpSent(true)
-        // Success toast with better styling
-        toast.success('📱 OTP sent successfully! Check console for OTP code.', {
-          duration: 4000,
-          style: {
-            background: '#10b981',
-            color: '#fff',
-            fontSize: '16px',
-            padding: '16px',
-            borderRadius: '8px'
-          }
-        })
+        toast.success('OTP sent successfully! Check console for OTP code.')
         setStep(2)
         
-        // Log the OTP for testing (remove in production)
         if (response.data.otp) {
           console.log('🔑 OTP Code for testing:', response.data.otp)
-          console.log('📱 Enter this code to verify:', response.data.otp)
         }
       } else {
-        // Error from API response
-        toast.error(`❌ ${response.data.message || 'Failed to send OTP'}`, {
-          duration: 5000,
-          style: {
-            background: '#ef4444',
-            color: '#fff',
-            fontSize: '16px',
-            padding: '16px',
-            borderRadius: '8px'
-          }
-        })
+        toast.error(response.data.message || 'Failed to send OTP')
       }
     } catch (error) {
-      console.error('❌ Error sending OTP:', error)
-      
-      // Better error handling with specific messages
-      let errorMessage = 'Failed to send OTP'
-      
-      if (error.message) {
-        errorMessage = error.message
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message
-      } else if (error.code) {
-        errorMessage = `Error ${error.code}: ${error.message || 'Unknown error'}`
-      }
-      
-      toast.error(`❌ ${errorMessage}`, {
-        duration: 5000,
-        style: {
-          background: '#ef4444',
-          color: '#fff',
-          fontSize: '16px',
-          padding: '16px',
-          borderRadius: '8px'
-        }
-      })
+      console.error('Error sending OTP:', error)
+      toast.error('Failed to send OTP')
     } finally {
       setLoading(false)
     }
   }
 
   const handleVerifyOTP = async () => {
-    const { otp, age, gender, name } = watch()
+    const { otp, age, gender, name } = form.getValues()
     
     if (!otp?.trim() || otp.length !== 6) {
-      toast.error('❌ Please enter a valid 6-digit OTP', {
-        style: {
-          background: '#ef4444',
-          color: '#fff',
-          fontSize: '14px',
-          padding: '12px',
-          borderRadius: '8px'
-        }
-      })
+      toast.error('Please enter a valid 6-digit OTP')
       return
     }
 
-    if (!name?.trim()) {
-      toast.error('❌ Please enter your name', {
-        style: {
-          background: '#ef4444',
-          color: '#fff',
-          fontSize: '14px',
-          padding: '12px',
-          borderRadius: '8px'
-        }
-      })
+    if (!name?.trim() || !age || !gender) {
+      toast.error('Please fill in all required fields')
       return
     }
-
-    if (!age || !gender) {
-      toast.error('❌ Please enter your age and gender', {
-        style: {
-          background: '#ef4444',
-          color: '#fff',
-          fontSize: '14px',
-          padding: '12px',
-          borderRadius: '8px'
-        }
-      })
-      return
-    }
-    
-    console.log('🔍 Form validation passed:')
-    console.log('  Name:', name)
-    console.log('  Age:', age)
-    console.log('  Gender:', gender)
-    console.log('  OTP:', otp)
 
     try {
       setLoading(true)
       
       const verifyData = {
-        phoneNumber: watch('phoneNumber'), 
-        name: watch('name'),
+        phoneNumber: form.getValues('phoneNumber'), 
+        name: form.getValues('name'),
         otp,
         age: parseInt(age),
         gender
       }
       
-      console.log('🔐 Verifying OTP with data:', verifyData)
-      console.log('📱 Phone:', verifyData.phoneNumber)
-      console.log('👤 Name:', verifyData.name)
-      console.log('🔑 OTP:', verifyData.otp)
-      console.log('👤 Age:', verifyData.age)
-      console.log('🚻 Gender:', verifyData.gender)
-      
       const response = await authAPI.verifyOTP(verifyData)
       
       if (response.data.success) {
-        // Log the user in with the token and user data
         const userData = {
           _id: response.data.patient.id,
           name: response.data.patient.name,
@@ -333,181 +210,82 @@ const BookingForm = ({ onBookingSuccess }) => {
         
         login(userData, response.data.token)
         setOtpVerified(true)
-        // Success toast with better styling
-        toast.success('✅ OTP verified successfully! You can now book appointments.', {
-          duration: 4000,
-          style: {
-            background: '#10b981',
-            color: '#fff',
-            fontSize: '16px',
-            padding: '16px',
-            borderRadius: '8px'
-          }
-        })
-        setLoading(false)
+        toast.success('OTP verified successfully!')
+        setStep(3)
       }
     } catch (error) {
       console.error('Error verifying OTP:', error)
       toast.error(error.response?.data?.message || 'Invalid OTP')
+    } finally {
       setLoading(false)
     }
   }
 
   const handleDoctorSelect = (doctorId) => {
-    console.log('👨‍⚕️ Doctor selected:', doctorId)
     const doctor = doctors.find(d => d.id === doctorId)
-    console.log('👨‍⚕️ Found doctor:', doctor)
     setSelectedDoctor(doctor)
+    form.setValue('doctorId', doctorId)
     setSelectedDate('')
     setSelectedSlot('')
-    
-    // Debug: Check if doctor is properly set
-    setTimeout(() => {
-      console.log('🔍 Selected doctor after state update:', selectedDoctor)
-    }, 100)
   }
 
   const handleDateSelect = (date) => {
-    console.log('📅 Date selected:', date)
     setSelectedDate(date)
+    form.setValue('appointmentDate', date)
     setSelectedSlot('')
-    
-    // Debug: Check if we have all required data
-    console.log('🔍 Before calling fetchAvailableSlots:')
-    console.log('  selectedDoctor:', selectedDoctor)
-    console.log('  date:', date)
     
     if (selectedDoctor) {
       fetchAvailableSlots(date)
-    } else {
-      console.log('⚠️ No doctor selected yet, cannot fetch slots')
     }
   }
 
   const handleSlotSelect = (slot) => {
     setSelectedSlot(slot)
+    form.setValue('timeSlot', slot)
   }
 
   const handleBooking = async () => {
     if (!selectedDoctor || !selectedDate || !selectedSlot) {
-      toast.error('❌ Please select all required fields', {
-        style: {
-          background: '#ef4444',
-          color: '#fff',
-          fontSize: '14px',
-          padding: '12px',
-          borderRadius: '8px'
-        }
-      })
+      toast.error('Please select all required fields')
       return
     }
 
-    // Check if user is authenticated
     const token = localStorage.getItem('token')
-    if (!token) {
-      toast.error('❌ Please verify your OTP first', {
-        style: {
-          background: '#ef4444',
-          color: '#fff',
-          fontSize: '14px',
-          padding: '12px',
-          borderRadius: '8px'
-        }
-      })
-      return
-    }
-
-    // Validate user data
-    if (!user) {
-      toast.error('❌ User session not found. Please login again.', {
-        style: {
-          background: '#ef4444',
-          color: '#fff',
-          fontSize: '14px',
-          padding: '12px',
-          borderRadius: '8px'
-        }
-      })
+    if (!token || !user) {
+      toast.error('Please verify your OTP first')
       return
     }
 
     try {
       setLoading(true)
       
-      // Show loading toast
-      toast.loading('Booking your appointment...', { duration: 2000 })
-      
       const bookingData = {
         doctorId: selectedDoctor.id,
         appointmentDate: selectedDate,
         timeSlot: selectedSlot,
-        patientName: user.name || watch('name'),
-        patientPhone: user.phoneNumber || watch('phoneNumber'),
-        patientAge: user.age || watch('age'),
-        patientGender: user.gender || watch('gender')
+        patientName: user.name || form.getValues('name'),
+        patientPhone: user.phoneNumber || form.getValues('phoneNumber'),
+        patientAge: user.age || form.getValues('age'),
+        patientGender: user.gender || form.getValues('gender')
       }
-
-      console.log('📝 Booking data:', bookingData)
-      console.log('👤 User data:', user)
-      console.log('🔑 Auth token:', token ? 'Present' : 'Missing')
 
       const response = await appointmentsAPI.book(bookingData)
       
-      console.log('✅ Booking response:', response.data)
-      
       if (response.data.success) {
-        // Success toast with better styling
-        toast.success('🎉 Appointment booked successfully!', {
-          duration: 4000,
-          style: {
-            background: '#10b981',
-            color: '#fff',
-            fontSize: '16px',
-            padding: '16px',
-            borderRadius: '8px'
-          }
-        })
+        toast.success('Appointment booked successfully!')
         
         if (onBookingSuccess) {
           onBookingSuccess(response.data.appointment)
         }
+        
+        // Redirect to user dashboard
+        navigate('/dashboard')
       } else {
-        // Error from API response
-        toast.error(`❌ ${response.data.message || 'Failed to book appointment'}`, {
-          duration: 5000,
-          style: {
-            background: '#ef4444',
-            color: '#fff',
-            fontSize: '16px',
-            padding: '16px',
-            borderRadius: '8px'
-          }
-        })
+        toast.error(response.data.message || 'Failed to book appointment')
       }
     } catch (error) {
-      console.error('❌ Error booking appointment:', error)
-      
-      // Better error handling with specific messages
-      let errorMessage = 'Failed to book appointment'
-      
-      if (error.message) {
-        errorMessage = error.message
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message
-      } else if (error.code) {
-        errorMessage = `Error ${error.code}: ${error.message || 'Unknown error'}`
-      }
-      
-      toast.error(`❌ ${errorMessage}`, {
-        duration: 5000,
-        style: {
-          background: '#ef4444',
-          color: '#fff',
-          fontSize: '16px',
-          padding: '16px',
-          borderRadius: '8px'
-        }
-      })
+      console.error('Error booking appointment:', error)
+      toast.error('Failed to book appointment')
     } finally {
       setLoading(false)
     }
@@ -532,258 +310,369 @@ const BookingForm = ({ onBookingSuccess }) => {
 
   const closeModal = () => {
     if (onBookingSuccess) {
-      onBookingSuccess(null) // This will close the modal
+      onBookingSuccess(null)
     }
   }
 
+  const steps = [
+    { id: 1, title: 'Personal Info', icon: User },
+    { id: 2, title: 'OTP Verification', icon: Shield },
+    { id: 3, title: 'Doctor & Details', icon: Stethoscope },
+    { id: 4, title: 'Date & Time', icon: Calendar },
+    { id: 5, title: 'Confirmation', icon: CheckCircle }
+  ]
+
   return (
-    <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
-      <div className="bg-black border border-white/10 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-gradient-to-br from-black via-gray-900 to-black backdrop-blur-xl flex items-center justify-center p-4 z-50">
+      <div className="bg-white border-4 border-black rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.3)] w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden relative">
+        
+        {/* Decorative Elements */}
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-600 via-blue-600 to-green-600"></div>
+        <div className="absolute top-4 right-4 w-20 h-20 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full opacity-20"></div>
+        <div className="absolute bottom-4 left-4 w-16 h-16 bg-gradient-to-br from-green-100 to-purple-100 rounded-full opacity-20"></div>
+        
         {/* Header */}
-        <div className="bg-white text-black p-4 flex-shrink-0">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-gradient-to-r from-black via-gray-900 to-black text-white p-6 flex-shrink-0 relative overflow-hidden">
+          {/* Header Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]"></div>
+            <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.1),transparent_50%)]"></div>
+          </div>
+          
+          <div className="flex items-center justify-between mb-6 relative z-10">
             <div>
-              <h2 className="text-lg font-bold">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
                 Book Appointment
               </h2>
-              <p className="text-gray-600 text-xs">
-                {step === 1 ? 'Step 1 of 2' : 'Step 2 of 2'}
-              </p>
+              <p className="text-gray-300 text-sm mt-1">Step {step} of 5 • Complete your booking</p>
             </div>
             <div className="text-right">
-              <div className="text-gray-500 text-xs">Time</div>
-              <div className="text-sm font-bold">
+              <div className="text-gray-400 text-xs font-medium">Current Time</div>
+              <div className="text-lg font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
                 {currentTime.toLocaleTimeString()}
               </div>
             </div>
           </div>
           
-          {/* Progress Bar */}
-          <div className="w-full bg-gray-200 rounded-full h-1">
-            <div 
-              className="bg-black h-1 rounded-full transition-all duration-500" 
-              style={{ width: step === 1 ? '50%' : '100%' }}
-            ></div>
+          {/* Enhanced Progress Steps */}
+          <div className="flex items-center justify-between relative z-10">
+            {steps.map((stepItem, index) => (
+              <div key={stepItem.id} className="flex items-center">
+                <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-500 transform hover:scale-110 ${
+                  step >= stepItem.id 
+                    ? 'bg-gradient-to-br from-white to-gray-100 text-black border-white shadow-lg' 
+                    : 'bg-transparent text-gray-400 border-gray-400'
+                }`}>
+                  <stepItem.icon className="w-5 h-5" />
+                </div>
+                {index < steps.length - 1 && (
+                  <div className={`w-16 h-1 mx-2 transition-all duration-500 rounded-full ${
+                    step > stepItem.id ? 'bg-gradient-to-r from-white to-gray-300' : 'bg-gray-600'
+                  }`}></div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Close Button */}
+        {/* Enhanced Close Button */}
         <button
           onClick={closeModal}
-          className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-10"
+          className="absolute top-6 right-6 text-white hover:text-gray-300 transition-all duration-300 z-20 bg-black/20 hover:bg-black/40 rounded-full p-2 backdrop-blur-sm"
         >
-          <X className="w-5 h-5" />
+          <X className="w-6 h-6" />
         </button>
 
-
-
-        {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
-          {step === 1 ? (
-            // Step 1: Personal Information
-            <div className="space-y-6">
-              <div className="text-center">
-                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3">
-                  <User className="w-6 h-6 text-black" />
-                </div>
-                <h3 className="text-lg font-bold text-white mb-1">Personal Information</h3>
-                <p className="text-xs text-gray-400">Enter your details to continue</p>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-white mb-2">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter your full name"
-                    {...register('name', { required: 'Name is required' })}
-                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg focus:ring-1 focus:ring-white focus:border-white transition-all text-white placeholder-gray-500 text-sm"
-                  />
-                  {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name.message}</p>}
+        {/* Enhanced Content */}
+        <div className="p-6 overflow-y-auto flex-1 bg-gradient-to-b from-white to-gray-50">
+          <Form {...form}>
+            {step === 1 && (
+              <div className="space-y-8">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-black to-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <User className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-black mb-2">Personal Information</h3>
+                  <p className="text-gray-600">Enter your details to get started with your appointment</p>
                 </div>
                 
-                <div>
-                  <label className="block text-xs font-medium text-white mb-2">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    placeholder="Enter 10-digit phone number"
-                    maxLength="10"
-                    {...register('phoneNumber', { 
+                <div className="space-y-6 max-w-lg mx-auto">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    rules={{ required: 'Name is required' }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-black font-bold mb-2 block">Full Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter your full name"
+                            className="border-2 border-gray-200 rounded-xl px-4 py-3 text-base focus:border-black focus:ring-2 focus:ring-black/10 transition-all duration-300 shadow-sm hover:shadow-md"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="phoneNumber"
+                    rules={{ 
                       required: 'Phone number is required',
                       pattern: {
                         value: /^[0-9]{10}$/,
                         message: 'Please enter a valid 10-digit phone number'
                       }
-                    })}
-                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg focus:ring-1 focus:ring-white focus:border-white transition-all text-white placeholder-gray-500 text-sm"
+                    }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-black font-bold mb-2 block">Phone Number</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter 10-digit phone number"
+                            maxLength="10"
+                            className="border-2 border-gray-200 rounded-xl px-4 py-3 text-base focus:border-black focus:ring-2 focus:ring-black/10 transition-all duration-300 shadow-sm hover:shadow-md"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  {errors.phoneNumber && <p className="text-red-400 text-xs mt-1">{errors.phoneNumber.message}</p>}
-                </div>
-              </div>
-              
-              <Button
-                onClick={handleSendOTP}
-                disabled={loading}
-                className="w-full bg-white text-black py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center hover:bg-gray-100"
-              >
-                {loading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
-                ) : (
-                  <>
-                    Send OTP
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </>
-                )}
-              </Button>
-
-              <div className="text-center">
-                <p className="text-xs text-gray-400">
-                  We'll send a verification code to your phone number
-                </p>
-              </div>
-            </div>
-          ) : (
-            // Step 2: Appointment Details
-            <div className="space-y-6">
-              {/* OTP Verification Section */}
-              <div className="space-y-4">
-                <div className="text-center">
-                  <h3 className="text-lg font-bold text-white mb-1">OTP Verification</h3>
-                  <p className="text-xs text-gray-400">Enter the 6-digit OTP sent to {watch('phoneNumber')}</p>
                 </div>
                 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-white mb-2">
-                      Enter OTP
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Enter 6-digit OTP"
-                      maxLength={6}
-                      {...register('otp', { 
-                        required: 'OTP is required',
-                        pattern: {
-                          value: /^[0-9]{6}$/,
-                          message: 'Please enter a valid 6-digit OTP'
-                        }
-                      })}
-                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg focus:ring-1 focus:ring-white focus:border-white transition-all text-white placeholder-gray-500 text-center text-lg tracking-widest"
-                    />
-                    {errors.otp && <p className="text-red-400 text-xs mt-1">{errors.otp.message}</p>}
+                <Button
+                  onClick={handleSendOTP}
+                  disabled={loading}
+                  className="w-full bg-black hover:bg-gray-800 text-white py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+                >
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto"></div>
+                  ) : (
+                    <>
+                      Send OTP & Continue
+                      <ArrowRight className="w-5 h-5 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-8">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-black to-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <Shield className="w-8 h-8 text-white" />
                   </div>
+                  <h3 className="text-2xl font-bold text-black mb-2">OTP Verification</h3>
+                  <p className="text-gray-600">Enter the 6-digit OTP sent to {form.getValues('phoneNumber')}</p>
+                </div>
+                
+                <div className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="otp"
+                    rules={{ 
+                      required: 'OTP is required',
+                      pattern: {
+                        value: /^[0-9]{6}$/,
+                        message: 'Please enter a valid 6-digit OTP'
+                      }
+                    }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-black font-bold mb-2 block">Enter OTP</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter 6-digit OTP"
+                            maxLength={6}
+                            className="border-2 border-gray-200 rounded-xl px-4 py-3 text-base text-center tracking-widest focus:border-black focus:ring-2 focus:ring-black/10 transition-all duration-300 shadow-sm hover:shadow-md"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-white mb-2">
-                        Age
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="Age"
-                        {...register('age', { 
-                          required: 'Age is required',
-                          min: { value: 1, message: 'Age must be at least 1' },
-                          max: { value: 120, message: 'Age must be less than 120' }
-                        })}
-                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg focus:ring-1 focus:ring-white focus:border-white transition-all text-white placeholder-gray-500 text-sm"
-                      />
-                      {errors.age && <p className="text-red-400 text-xs mt-1">{errors.age.message}</p>}
-                    </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="age"
+                      rules={{ 
+                        required: 'Age is required',
+                        min: { value: 1, message: 'Age must be at least 1' },
+                        max: { value: 120, message: 'Age must be less than 120' }
+                      }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-black font-semibold">Age</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Age"
+                              className="border-2 border-gray-200 rounded-xl px-4 py-3 text-lg focus:border-black transition-all"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     
-                    <div>
-                      <label className="block text-xs font-medium text-white mb-2">
-                        Gender
-                      </label>
-                      <Select onValueChange={(value) => setValue('gender', value)}>
-                        <SelectTrigger className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg focus:ring-1 focus:ring-white focus:border-white transition-all text-white text-sm">
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {errors.gender && <p className="text-red-400 text-xs mt-1">{errors.gender.message}</p>}
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name="gender"
+                      rules={{ required: 'Gender is required' }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-black font-semibold">Gender</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="border-2 border-gray-200 rounded-xl px-4 py-3 text-lg focus:border-black transition-all">
+                                <SelectValue placeholder="Select gender" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                   
                   <Button
                     onClick={handleVerifyOTP}
-                    disabled={loading || otpVerified}
-                    className={`w-full bg-white text-black py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center hover:bg-gray-100 ${
-                      otpVerified ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
+                    disabled={loading}
+                    className="w-full bg-black hover:bg-gray-800 text-white py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
                   >
                     {loading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
-                    ) : otpVerified ? (
-                      <>
-                        Verified
-                      </>
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto"></div>
                     ) : (
                       <>
-                        Verify OTP
+                        Verify OTP & Continue
+                        <ArrowRight className="w-5 h-5 ml-2" />
                       </>
                     )}
                   </Button>
+                  
+                  <Button
+                    onClick={() => setStep(1)}
+                    variant="outline"
+                    className="w-full border-2 border-gray-300 text-gray-600 hover:bg-gray-100 py-3 rounded-xl font-semibold transition-all duration-300"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back
+                  </Button>
                 </div>
               </div>
+            )}
 
-              {/* Appointment Selection Section */}
-              {otpVerified && (
-                <>
-                  {/* Doctor Selection */}
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <h3 className="text-lg font-bold text-white mb-1">Select Doctor</h3>
-                      <p className="text-xs text-gray-400">Choose your preferred healthcare provider</p>
-                    </div>
-                    
-                    <Select onValueChange={handleDoctorSelect}>
-                      <SelectTrigger className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg focus:ring-1 focus:ring-white focus:border-white transition-all text-white text-sm">
-                        <SelectValue placeholder="Select a doctor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {doctors.map((doctor) => (
-                          <SelectItem key={doctor.id} value={doctor.id}>
-                            <div className="flex items-center space-x-3 py-2">
-                              <div>
-                                <div className="font-semibold">Dr. {doctor.name}</div>
-                                <div className="text-sm text-gray-500">{doctor.specialization}</div>
-                              </div>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+            {step === 3 && (
+              <div className="space-y-8">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-black to-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <Stethoscope className="w-8 h-8 text-white" />
                   </div>
-
-                  {/* Date and Day Selection - Horizontal Layout */}
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <h3 className="text-lg font-bold text-white mb-1">Select Date & Day</h3>
-                      <p className="text-xs text-gray-400">Choose your preferred appointment date and day</p>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-white mb-2">
-                          Date
-                        </label>
-                        <Select onValueChange={handleDateSelect}>
-                          <SelectTrigger className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg focus:ring-1 focus:ring-white focus:border-white transition-all text-white text-sm">
-                            <SelectValue placeholder="Select date" />
+                  <h3 className="text-2xl font-bold text-black mb-2">Select Doctor</h3>
+                  <p className="text-gray-600">Choose your preferred healthcare provider</p>
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="doctorId"
+                  rules={{ required: 'Please select a doctor' }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-black font-bold mb-2 block">Doctor</FormLabel>
+                      <Select onValueChange={(value) => {
+                        field.onChange(value)
+                        handleDoctorSelect(value)
+                      }} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="border-2 border-gray-200 rounded-xl px-4 py-3 text-base focus:border-black focus:ring-2 focus:ring-black/10 transition-all duration-300 shadow-sm hover:shadow-md">
+                            <SelectValue placeholder="Select a doctor" />
                           </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {doctors.map((doctor) => (
+                            <SelectItem key={doctor.id} value={doctor.id}>
+                              <div className="flex items-center space-x-3 py-2">
+                                <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
+                                  <Stethoscope className="w-4 h-4 text-white" />
+                                </div>
+                                <div>
+                                  <div className="font-semibold">Dr. {doctor.name}</div>
+                                  <div className="text-sm text-gray-500">{doctor.specialization} • Room {doctor.room}</div>
+                                </div>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <Button
+                  onClick={() => setStep(4)}
+                  disabled={!selectedDoctor}
+                  className="w-full bg-gradient-to-r from-black to-gray-800 hover:from-gray-800 hover:to-black text-white py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  Continue to Date & Time
+                  <ArrowRight className="w-6 h-6 ml-3" />
+                </Button>
+                
+                <Button
+                  onClick={() => setStep(2)}
+                  variant="outline"
+                  className="w-full border-3 border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 py-4 rounded-2xl font-bold text-lg transition-all duration-300 shadow-sm hover:shadow-md"
+                >
+                  <ArrowLeft className="w-5 h-5 mr-3" />
+                  Back
+                </Button>
+              </div>
+            )}
+
+            {step === 4 && (
+              <div className="space-y-8">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-black to-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <Calendar className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-black mb-2">Select Date & Time</h3>
+                  <p className="text-gray-600">Choose your preferred appointment slot</p>
+                </div>
+                
+                <div className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="appointmentDate"
+                    rules={{ required: 'Please select a date' }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-black font-bold text-lg mb-3 block">Date</FormLabel>
+                        <Select onValueChange={(value) => {
+                          field.onChange(value)
+                          handleDateSelect(value)
+                        }} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="border-3 border-gray-200 rounded-2xl px-6 py-4 text-lg focus:border-black focus:ring-4 focus:ring-black/10 transition-all duration-300 shadow-sm hover:shadow-md">
+                              <SelectValue placeholder="Select date" />
+                            </SelectTrigger>
+                          </FormControl>
                           <SelectContent>
                             {getAvailableDates().map((date) => (
                               <SelectItem key={date.value} value={date.value}>
                                 <div className="flex items-center space-x-3 py-2">
+                                  <Calendar className="w-5 h-5 text-gray-500" />
                                   <div>
                                     <div className="font-semibold">{date.label}</div>
                                     {date.isToday && <div className="text-sm text-green-600">Today</div>}
@@ -793,166 +682,192 @@ const BookingForm = ({ onBookingSuccess }) => {
                             ))}
                           </SelectContent>
                         </Select>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-xs font-medium text-white mb-2">
-                          Day
-                        </label>
-                        <Select onValueChange={(value) => {
-                          // Find the date that corresponds to this day and select it
-                          const selectedDayDate = getAvailableDates().find(date => 
-                            new Date(date.value).toLocaleDateString('en-US', { weekday: 'long' }) === value
-                          );
-                          if (selectedDayDate) {
-                            handleDateSelect(selectedDayDate.value);
-                          }
-                        }}>
-                          <SelectTrigger className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg focus:ring-1 focus:ring-white focus:border-white transition-all text-white text-sm">
-                            <SelectValue placeholder="Select day" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {getAvailableDates().map((date) => (
-                              <SelectItem key={date.value} value={new Date(date.value).toLocaleDateString('en-US', { weekday: 'long' })}>
-                                <div className="flex items-center space-x-3 py-2">
-                                  <div>
-                                    <div className="font-semibold">{new Date(date.value).toLocaleDateString('en-US', { weekday: 'long' })}</div>
-                                    <div className="text-sm text-gray-500">{date.label}</div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {selectedDate && (
+                    <FormField
+                      control={form.control}
+                      name="timeSlot"
+                      rules={{ required: 'Please select a time slot' }}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-black font-bold text-lg mb-3 block">Time Slot</FormLabel>
+                          {loading ? (
+                            <div className="flex items-center justify-center py-12">
+                              <div className="animate-spin rounded-full h-10 w-10 border-b-3 border-black"></div>
+                              <span className="ml-4 text-gray-600 text-lg">Loading available slots...</span>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                {availableSlots.map((slot) => {
+                                  const isSelected = field.value === slot.time;
+                                  const isBooked = !slot.available;
+                                  
+                                  return (
+                                    <button
+                                      key={slot.time}
+                                      type="button"
+                                      onClick={() => {
+                                        if (slot.available) {
+                                          field.onChange(slot.time);
+                                          handleSlotSelect(slot.time);
+                                        }
+                                      }}
+                                      disabled={isBooked}
+                                      className={`
+                                        relative p-4 rounded-2xl border-3 transition-all duration-300 transform hover:scale-105
+                                        ${isSelected 
+                                          ? 'bg-gradient-to-r from-black to-gray-800 text-white border-black shadow-xl' 
+                                          : isBooked
+                                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-60'
+                                            : 'bg-white text-black border-gray-200 hover:border-black hover:shadow-lg'
+                                        }
+                                      `}
+                                    >
+                                      <div className="flex items-center justify-center space-x-2">
+                                        <Clock className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-gray-500'}`} />
+                                        <span className={`font-bold text-lg ${isSelected ? 'text-white' : 'text-black'}`}>
+                                          {slot.displayTime}
+                                        </span>
+                                      </div>
+                                      
+                                      {isSelected && (
+                                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                          <CheckCircle className="w-4 h-4 text-white" />
+                                        </div>
+                                      )}
+                                      
+                                      {isBooked && (
+                                        <div className="absolute inset-0 bg-red-500/10 rounded-2xl flex items-center justify-center">
+                                          <span className="text-red-500 text-xs font-bold">BOOKED</span>
+                                        </div>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              
+                              {field.value && (
+                                <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-2xl">
+                                  <div className="flex items-center space-x-3">
+                                    <CheckCircle className="w-6 h-6 text-green-600" />
+                                    <div>
+                                      <div className="font-bold text-green-800">Selected Time</div>
+                                      <div className="text-green-600">
+                                        {availableSlots.find(slot => slot.time === field.value)?.displayTime}
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Time Selection */}
-                  {selectedDate && (
-                    <div className="space-y-4">
-                      <div className="text-center">
-                        <h3 className="text-lg font-bold text-white mb-1">Select Time</h3>
-                        <p className="text-xs text-gray-400">Choose your preferred time slot</p>
-                        <p className="text-xs text-green-400 mt-1">Working Hours: 9:00 AM - 1:00 PM</p>
-                      </div>
-                      
-                      {/* Debug info */}
-                      <div className="text-xs text-gray-400 p-2 bg-white/5 rounded border">
-                        <p>Debug: {availableSlots.length} slots available</p>
-                        <p>Selected Doctor: {selectedDoctor?.name || 'None'} (ID: {selectedDoctor?.id || 'None'})</p>
-                        <p>Selected Date: {selectedDate || 'None'}</p>
-                        <p>Loading: {loading ? 'Yes' : 'No'}</p>
-                        <p>Working Hours: 9:00 AM - 1:00 PM (10-min intervals)</p>
-                        <p>Total Slots: {availableSlots.length} (4 hours × 6 slots/hour)</p>
-                        <p>Available Slots: {availableSlots.length > 0 ? availableSlots.slice(0, 5).map(s => s.displayTime).join(', ') + (availableSlots.length > 5 ? '...' : '') : 'None'}</p>
-                      </div>
-                      
-                      {loading ? (
-                        <div className="flex items-center justify-center py-4">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                          <span className="ml-3 text-xs text-gray-400">Loading slots...</span>
-                        </div>
-                      ) : availableSlots.length === 0 ? (
-                        <div className="text-center py-4">
-                          <p className="text-xs text-gray-400 mb-1">No available slots</p>
-                          <p className="text-gray-500 text-xs">Select a different date</p>
-                        </div>
-                      ) : (
-                        <Select onValueChange={handleSlotSelect}>
-                          <SelectTrigger className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg focus:ring-1 focus:ring-white focus:border-white transition-all text-white text-sm">
-                            <SelectValue placeholder="Select a time slot" />
-                          </SelectTrigger>
-                          <SelectContent>
-                                                    {availableSlots.map((slot) => {
-                          console.log('🎯 Rendering slot:', slot)
-                          return (
-                            <SelectItem key={slot.time} value={slot.time} disabled={!slot.available}>
-                              <div className="flex items-center space-x-3 py-2">
-                                <div>
-                                  <div className="font-semibold">{slot.displayTime}</div>
-                                  <div className="text-xs text-gray-500">Available</div>
-                                </div>
-                              </div>
-                            </SelectItem>
-                          )
-                        })}
-                          </SelectContent>
-                        </Select>
+                              )}
+                            </div>
+                          )}
+                          <FormMessage />
+                        </FormItem>
                       )}
-                    </div>
+                    />
                   )}
+                </div>
+                
+                <Button
+                  onClick={() => setStep(5)}
+                  disabled={!selectedDate || !selectedSlot}
+                  className="w-full bg-gradient-to-r from-black to-gray-800 hover:from-gray-800 hover:to-black text-white py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  Review & Confirm
+                  <ArrowRight className="w-6 h-6 ml-3" />
+                </Button>
+                
+                <Button
+                  onClick={() => setStep(3)}
+                  variant="outline"
+                  className="w-full border-3 border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 py-4 rounded-2xl font-bold text-lg transition-all duration-300 shadow-sm hover:shadow-md"
+                >
+                  <ArrowLeft className="w-5 h-5 mr-3" />
+                  Back
+                </Button>
+              </div>
+            )}
 
-                  {/* Booking Summary */}
-                  {selectedDoctor && selectedDate && selectedSlot && (
-                    <div className="space-y-4">
-                      <div className="text-center">
-                        <h3 className="text-lg font-bold text-white mb-1">Appointment Summary</h3>
-                        <p className="text-xs text-gray-400">Review your appointment details</p>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div className="flex items-center space-x-3 p-3 bg-white/5 rounded-lg border border-white/10">
-                          <div>
-                            <p className="text-xs text-gray-400">Patient</p>
-                            <p className="text-sm font-bold text-white">{watch('name')}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3 p-3 bg-white/5 rounded-lg border border-white/10">
-                          <div>
-                            <p className="text-xs text-gray-400">Doctor</p>
-                            <p className="text-sm font-bold text-white">Dr. {selectedDoctor.name}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3 p-3 bg-white/5 rounded-lg border border-white/10">
-                          <div>
-                            <p className="text-xs text-gray-400">Date</p>
-                            <p className="text-sm font-bold text-white">{moment(selectedDate).format('MMM DD, YYYY')}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3 p-3 bg-white/5 rounded-lg border border-white/10">
-                          <div>
-                            <p className="text-xs text-gray-400">Time</p>
-                            <p className="text-sm font-bold text-white">{selectedSlot}</p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Final Booking Button */}
-                      <Button
-                        onClick={handleBooking}
-                        disabled={loading}
-                        className="w-full bg-white text-black py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center hover:bg-gray-100"
-                      >
-                        {loading ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black"></div>
-                        ) : (
-                          <>
-                            Confirm & Book Appointment
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Back Button */}
-                  <div className="text-center pt-4">
-                    <Button
-                      onClick={() => setStep(1)}
-                      variant="outline"
-                      className="px-4 py-2 text-xs rounded-lg border border-white/20 hover:bg-white/5 text-white transition-all duration-200"
-                    >
-                      <ArrowLeft className="w-3 h-3 mr-2" />
-                      Back
-                    </Button>
+            {step === 5 && (
+              <div className="space-y-10">
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-gradient-to-br from-black to-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                    <CheckCircle className="w-10 h-10 text-white" />
                   </div>
-                </>
-              )}
-            </div>
-          )}
+                  <h3 className="text-3xl font-bold text-black mb-3">Confirm Appointment</h3>
+                  <p className="text-gray-600 text-lg">Review your appointment details</p>
+                </div>
+                
+                <div className="space-y-6">
+                  <div className="bg-gradient-to-br from-gray-50 to-blue-50 border-3 border-gray-200 rounded-2xl p-8 shadow-lg">
+                    <h4 className="font-bold text-black text-xl mb-6 flex items-center">
+                      <CheckCircle className="w-6 h-6 text-green-600 mr-3" />
+                      Appointment Summary
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center p-3 bg-white rounded-xl border border-gray-100">
+                          <span className="text-gray-600 font-medium">Patient Name:</span>
+                          <span className="font-bold text-black">{form.getValues('name')}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-white rounded-xl border border-gray-100">
+                          <span className="text-gray-600 font-medium">Phone:</span>
+                          <span className="font-bold text-black">{form.getValues('phoneNumber')}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-white rounded-xl border border-gray-100">
+                          <span className="text-gray-600 font-medium">Doctor:</span>
+                          <span className="font-bold text-black">Dr. {selectedDoctor?.name}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center p-3 bg-white rounded-xl border border-gray-100">
+                          <span className="text-gray-600 font-medium">Specialization:</span>
+                          <span className="font-bold text-black">{selectedDoctor?.specialization}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-white rounded-xl border border-gray-100">
+                          <span className="text-gray-600 font-medium">Date:</span>
+                          <span className="font-bold text-black">{moment(selectedDate).format('MMM DD, YYYY')}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-white rounded-xl border border-gray-100">
+                          <span className="text-gray-600 font-medium">Time:</span>
+                          <span className="font-bold text-black">{selectedSlot}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <Button
+                  onClick={handleBooking}
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white py-5 rounded-2xl font-bold text-xl transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-3 border-white mx-auto"></div>
+                  ) : (
+                    <>
+                      Confirm & Book Appointment
+                      <CheckCircle className="w-7 h-7 ml-3" />
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  onClick={() => setStep(4)}
+                  variant="outline"
+                  className="w-full border-2 border-gray-300 text-gray-600 hover:bg-gray-100 py-3 rounded-xl font-semibold transition-all duration-300"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+              </div>
+            )}
+          </Form>
         </div>
       </div>
     </div>

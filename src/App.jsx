@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import './App.css'
 import './lib/initDatabase.js'
 import './lib/testDatabase.js'
@@ -23,6 +23,7 @@ console.log('  VITE_TWILIO_PHONE_NUMBER:', import.meta.env.VITE_TWILIO_PHONE_NUM
 import Navigation from './components/Navigation'
 
 // Pages
+import LandingPage from './pages/LandingPage'
 import OTPVerification from './pages/OTPVerification'
 import BookingForm from './pages/BookingForm'
 import UserDashboard from './pages/UserDashboard'
@@ -37,8 +38,8 @@ const ProtectedDashboard = ({ children }) => {
   const { user, loading } = useAuth()
   
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+    return <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
     </div>
   }
   
@@ -49,23 +50,40 @@ const ProtectedDashboard = ({ children }) => {
   return children
 }
 
+// Booking Form Wrapper Component
+const BookingFormWrapper = () => {
+  const navigate = useNavigate()
+  
+  const handleBookingSuccess = (appointment) => {
+    if (appointment) {
+      // If booking was successful, redirect to dashboard
+      navigate('/dashboard')
+    } else {
+      // If booking was cancelled, redirect to landing page
+      navigate('/')
+    }
+  }
+  
+  return <BookingForm onBookingSuccess={handleBookingSuccess} />
+}
+
 function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="min-h-screen w-full relative">
-          {/* Navigation */}
-          <Navigation />
+        <div className="min-h-screen w-full relative bg-white">
+          {/* Navigation
+          <Navigation /> */}
           
           {/* Your Content/Components */}
           <div className="relative z-10">
             <Routes>
-              {/* Default Route - UserDashboard */}
-              <Route path="/" element={<UserDashboard />} />
+              {/* Landing Page - Default Route */}
+              <Route path="/" element={<LandingPage />} />
               
               {/* Public Routes */}
               <Route path="/verify-otp" element={<OTPVerification />} />
-              <Route path="/booking" element={<BookingForm />} />
+              <Route path="/booking" element={<BookingFormWrapper />} />
               <Route path="/doctor" element={<DoctorDashboard />} />
               <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
               <Route path="/test" element={<TestPage />} />
