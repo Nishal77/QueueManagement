@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { Heart, Lock, ArrowLeft, RefreshCw } from 'lucide-react'
 import { Button } from '../components/ui/button'
-import { authAPI } from '../services/api'
+import { authAPI } from '../services/supabaseApi'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -44,18 +44,41 @@ const OTPVerification = () => {
   const onSubmit = async (data) => {
     setIsLoading(true)
     try {
-      const response = await authAPI.verifyOTP({
+      console.log('Verifying OTP for:', tempUserData.phoneNumber)
+      console.log('Name from tempUserData:', tempUserData.name)
+      console.log('Entered OTP:', data.otp)
+      console.log('Age:', data.age)
+      console.log('Gender:', data.gender)
+      console.log('Full data being sent:', {
         phoneNumber: tempUserData.phoneNumber,
+        name: tempUserData.name,
         otp: data.otp,
         age: data.age,
         gender: data.gender
       })
+      
+      const response = await authAPI.verifyOTP({
+        phoneNumber: tempUserData.phoneNumber,
+        name: tempUserData.name,
+        otp: data.otp,
+        age: data.age,
+        gender: data.gender
+      })
+      
+      console.log('OTP Verification Response:', response)
 
       if (response.data.success) {
+        console.log('OTP verification successful!')
+        console.log('Patient data:', response.data.patient)
+        console.log('Token:', response.data.token)
+        
         login(response.data.patient, response.data.token)
         clearTempData()
         toast.success('Verification successful!')
         navigate('/dashboard')
+      } else {
+        console.error('OTP verification failed:', response.data.message)
+        toast.error(response.data.message || 'Verification failed')
       }
     } catch (error) {
       console.error('Error verifying OTP:', error)
@@ -67,13 +90,26 @@ const OTPVerification = () => {
   const handleResendOTP = async () => {
     setResendLoading(true)
     try {
+      console.log('Resending OTP to:', tempUserData.phoneNumber)
+      
       const response = await authAPI.resendOTP({
         phoneNumber: tempUserData.phoneNumber
       })
+      
+      console.log('Resend OTP Response:', response)
 
       if (response.data.success) {
-        toast.success('OTP resent successfully!')
+        toast.success('OTP resent successfully! Check console for new OTP code.')
         setCountdown(30)
+        
+        // Log the new OTP for testing (remove in production)
+        if (response.data.otp) {
+          console.log('New OTP Code for testing:', response.data.otp)
+          console.log('Enter this new code to verify:', response.data.otp)
+        }
+      } else {
+        console.error('Failed to resend OTP:', response.data.message)
+        toast.error(response.data.message || 'Failed to resend OTP')
       }
     } catch (error) {
       console.error('Error resending OTP:', error)
@@ -127,6 +163,8 @@ const OTPVerification = () => {
               <strong>Phone:</strong> {tempUserData.phoneNumber}
             </p>
           </div>
+
+
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* OTP Field */}

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { Heart, Phone, User, ArrowRight } from 'lucide-react'
 import { Button } from '../components/ui/button'
-import { authAPI } from '../services/api'
+import { authAPI } from '../services/supabaseApi'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 import Hero from '../components/Hero'
@@ -48,7 +48,9 @@ const LandingPage = () => {
           {/* Form Header */}
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-white mb-2">Book Your Appointment</h2>
-            <p className="text-blue-200">Quick and easy appointment booking</p>
+            <p className="text-blue-200 mb-4">Quick and easy appointment booking</p>
+            
+
           </div>
 
           {/* Login Form */}

@@ -69,6 +69,8 @@ const Hero = () => {
             Learn More
           </Button>
         </div>
+        
+
 
         {/* Features Grid */}
         <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Clock, User, Stethoscope, Calendar, Phone, MapPin, AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
-import { appointmentsAPI } from '../services/api'
+import { appointmentsAPI } from '../services/supabaseApi'
 import QueueTable from './QueueTable'
 
 const LiveAppointmentTracker = ({ currentUser, appointments }) => {
@@ -114,7 +114,9 @@ const LiveAppointmentTracker = ({ currentUser, appointments }) => {
         {/* Header */}
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-gray-800 mb-2">Live Appointment Tracker</h2>
-          <p className="text-gray-600 text-lg">Real-time updates on your appointment status</p>
+          <p className="text-gray-600 text-lg mb-4">Real-time updates on your appointment status</p>
+          
+
         </div>
 
         {/* Current Time Display */}

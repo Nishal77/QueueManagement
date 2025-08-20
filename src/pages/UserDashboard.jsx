@@ -1,230 +1,243 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Stethoscope, Calendar, Clock, User, AlertCircle, CheckCircle, Loader2, Heart, ArrowRight, Phone } from 'lucide-react'
+import { BookOpen, Phone, Calendar, Clock, User, Stethoscope, CheckCircle, AlertCircle, XCircle, ChevronDown } from 'lucide-react'
 import { Button } from '../components/ui/button'
-import { appointmentsAPI } from '../services/api'
 import { useAuth } from '../context/AuthContext'
-import { useSocket } from '../context/SocketContext'
+import { appointmentsAPI, doctorsAPI } from '../services/supabaseApi'
 import toast from 'react-hot-toast'
-import { format } from 'date-fns'
 import BookingForm from './BookingForm'
-import '../assets/fonts/BricolageGrotesque-Medium.ttf'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu'
 
 const UserDashboard = () => {
-  const [appointments, setAppointments] = useState([])
-  const [currentAppointment, setCurrentAppointment] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [showBookingForm, setShowBookingForm] = useState(false)
-  const [currentTime, setCurrentTime] = useState(new Date())
-  const [updatedAppointmentId, setUpdatedAppointmentId] = useState(null)
+  const [appointments, setAppointments] = useState([])
+  const [allAppointments, setAllAppointments] = useState([])
+  const [doctors, setDoctors] = useState([])
+  const [selectedDoctor, setSelectedDoctor] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const navigate = useNavigate()
-  const { user, logout } = useAuth()
-  const { socket, isConnected } = useSocket()
+  const { user } = useAuth()
 
-  useEffect(() => {
-    // Only fetch data if user exists
-    if (user) {
-      fetchAppointments()
-      fetchCurrentStatus()
-    } else {
-      setLoading(false)
-    }
-  }, [user])
-
-  useEffect(() => {
-    if (socket && user) {
-      console.log('Setting up socket listeners for UserDashboard')
-      
-      socket.on('appointment-updated', (data) => {
-        console.log('Received appointment-updated event:', data)
-        handleAppointmentUpdate(data)
-      })
-      
-      socket.on('appointment-status-updated', (data) => {
-        console.log('Received appointment-status-updated event:', data)
-        handleAppointmentStatusUpdate(data)
-      })
-      
-      // Join patient room for real-time updates
-      if (user && user.id) {
-        socket.emit('join-patient-room', user.id)
-        console.log('Joined patient room:', user.id)
-      }
-      
-      return () => {
-        console.log('Cleaning up socket listeners')
-        socket.off('appointment-updated', handleAppointmentUpdate)
-        socket.off('appointment-status-updated', handleAppointmentStatusUpdate)
-      }
-    }
-  }, [socket, user])
-
-  // Update current time every second
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [])
-
-  const fetchAppointments = async () => {
+  // Fetch doctors
+  const fetchDoctors = async () => {
     try {
-      const response = await appointmentsAPI.getMyAppointments()
-      console.log('Appointments response:', response.data)
+      const response = await doctorsAPI.getAll()
+      if (response && response.data && response.data.success) {
+        setDoctors(response.data.doctors || [])
+        console.log('Doctors loaded:', response.data.doctors)
+      } else {
+        console.error('Failed to load doctors:', response)
+        setDoctors([])
+      }
+    } catch (error) {
+      console.error('Error fetching doctors:', error)
+      setDoctors([])
+    }
+  }
+
+  // Fetch user's appointments
+  const fetchAppointments = async () => {
+    if (!user) return
+    
+    try {
+      setLoading(true)
+      const response = await appointmentsAPI.getMyAppointments(user._id || user.id)
       
-      // Ensure appointments have proper structure and filter out any malformed data
-      const validAppointments = (response.data.appointments || []).filter(appointment => 
-        appointment && appointment._id && appointment.doctor
-      )
-      setAppointments(validAppointments)
-      console.log('Valid appointments:', validAppointments)
+      if (response && response.data && response.data.success) {
+        const allAppts = response.data.appointments || []
+        setAllAppointments(allAppts)
+        
+        // Filter by selected doctor if any
+        if (selectedDoctor) {
+          const filteredAppts = allAppts.filter(apt => 
+            apt.doctor && apt.doctor.id === selectedDoctor.id
+          )
+          setAppointments(filteredAppts)
+        } else {
+          setAppointments(allAppts)
+        }
+        
+        console.log('Appointments fetched:', allAppts)
+      } else {
+        console.log('No appointments found or API error')
+        setAllAppointments([])
+        setAppointments([])
+      }
     } catch (error) {
       console.error('Error fetching appointments:', error)
+      setAllAppointments([])
       setAppointments([])
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchCurrentStatus = async () => {
-    try {
-      const response = await appointmentsAPI.getCurrentStatus()
-      console.log('Current status response:', response.data)
-      if (response.data.hasAppointment) {
-        setCurrentAppointment(response.data.appointment)
-      }
-    } catch (error) {
-      console.error('Error fetching current status:', error)
-    }
-  }
-
-  const handleAppointmentUpdate = (data) => {
-    if (currentAppointment && currentAppointment._id === data.appointmentId) {
-      setCurrentAppointment(prev => ({ ...prev, status: data.status }))
-    }
-    fetchAppointments()
-    toast.success('Appointment status updated!')
-  }
-
-  const handleAppointmentStatusUpdate = (data) => {
-    console.log('Received appointment status update:', data)
+  // Handle doctor selection
+  const handleDoctorSelect = (doctor) => {
+    console.log('👨‍⚕️ Doctor selected:', doctor)
+    setSelectedDoctor(doctor)
     
-    // Update appointments list in real-time IMMEDIATELY
-    setAppointments(prev => {
-      const updated = prev.map(appointment => 
-        appointment._id === data.appointmentId 
-          ? { ...appointment, status: data.status }
-          : appointment
+    if (doctor) {
+      // Filter appointments for selected doctor
+      const filteredAppts = allAppointments.filter(apt => 
+        apt.doctor && apt.doctor.id === doctor.id
       )
-      console.log('Updated appointments:', updated)
-      return updated
-    })
-    
-    // Update current appointment if it matches
-    if (currentAppointment && currentAppointment._id === data.appointmentId) {
-      setCurrentAppointment(prev => ({ ...prev, status: data.status }))
+      setAppointments(filteredAppts)
+      toast.success(`Showing appointments for ${doctor.name}`, {
+        style: {
+          background: '#10b981',
+          color: '#fff',
+          fontSize: '14px',
+          padding: '12px',
+          borderRadius: '8px'
+        }
+      })
+    } else {
+      // Show all appointments
+      setAppointments(allAppointments)
+      toast.success('Showing all appointments', {
+        style: {
+          background: '#10b981',
+          color: '#fff',
+          fontSize: '14px',
+          padding: '12px',
+          borderRadius: '8px'
+        }
+      })
     }
-    
-    // Set updated appointment ID for visual feedback
-    setUpdatedAppointmentId(data.appointmentId)
-    setTimeout(() => setUpdatedAppointmentId(null), 3000) // Clear after 3 seconds
   }
 
-  const handleBookingSuccess = () => {
-    setShowBookingForm(false)
-    // Refresh data after a short delay to ensure backend has processed the booking
-    setTimeout(() => {
+  // Refresh appointments
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await fetchAppointments()
+    setRefreshing(false)
+    toast.success('Appointments refreshed!')
+  }
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    if (user) {
+      fetchDoctors()
       fetchAppointments()
-      fetchCurrentStatus()
-    }, 1000)
-    toast.success('Appointment booked successfully!')
+      
+      const interval = setInterval(() => {
+        fetchAppointments()
+      }, 30000)
+      
+      return () => clearInterval(interval)
+    }
+  }, [user])
+
+  // Update appointments when allAppointments or selectedDoctor changes
+  useEffect(() => {
+    if (selectedDoctor) {
+      const filteredAppts = allAppointments.filter(apt => 
+        apt.doctor && apt.doctor.id === selectedDoctor.id
+      )
+      setAppointments(filteredAppts)
+    } else {
+      setAppointments(allAppointments)
+    }
+  }, [allAppointments, selectedDoctor])
+
+  const handleBookingSuccess = (appointment) => {
+    setShowBookingForm(false)
+    if (appointment) {
+      toast.success('Appointment booked successfully!')
+      // Refresh appointments to show the new one
+      fetchAppointments()
+    }
   }
 
-  const getStatusColor = (status) => {
+  // Get status icon and color
+  const getStatusInfo = (status) => {
     switch (status) {
-      case 'waiting': return 'text-yellow-600 bg-yellow-100'
-      case 'in-progress': return 'text-blue-600 bg-blue-100'
-      case 'completed': return 'text-green-600 bg-green-100'
-      case 'cancelled': return 'text-red-600 bg-red-100'
-      default: return 'text-gray-600 bg-gray-100'
+      case 'waiting':
+        return { icon: AlertCircle, color: 'text-yellow-600', bgColor: 'bg-yellow-100', text: 'Waiting' }
+      case 'in-progress':
+        return { icon: Clock, color: 'text-blue-600', bgColor: 'bg-blue-100', text: 'In Consultation' }
+      case 'completed':
+        return { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-100', text: 'Completed' }
+      case 'cancelled':
+        return { icon: XCircle, color: 'text-red-600', bgColor: 'bg-red-100', text: 'Cancelled' }
+      default:
+        return { icon: Clock, color: 'text-gray-600', bgColor: 'bg-gray-100', text: 'Unknown' }
     }
+  }
+
+  // Format date
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    })
   }
 
   // Show landing experience when no user
   if (!user) {
     return (
-      <div className="min-h-screen w-full relative">
-        {/* Azure Depths */}
-        <div
-          className="absolute inset-0 z-0"
-          style={{
-            background: "radial-gradient(125% 125% at 50% 100%, #000000 40%, #010133 100%)",
-          }}
-        />
-        
-        {/* Main Content */}
-        <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+      <div style={{ minHeight: '100vh', padding: '20px', backgroundColor: '#f5f5f5' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
           
           {/* Hero Section */}
-          <div className="text-center mb-0 flex flex-col items-center justify-center min-h-[60vh]">
-            <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-full mb-12 shadow-2xl border border-white/20">
-              <div className="w-3 h-3 rounded-full shadow-lg bg-emerald-400 animate-pulse"></div>
-              <span className="text-sm font-medium tracking-wider uppercase" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-                Welcome to QueueManagement
-              </span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-medium text-white mb-4 leading-tight max-w-5xl mx-auto tracking-tight" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-              Experience Seamless, Real-Time Appointment Management at <span className="italic text-orange-500">(Ashok Hospital)</span>
-            </h2>
-            <p className="text-xl text-gray-300 max-w-2xl mx-auto leading-relaxed">
-              Book, track, and get notified — all from your phone.
+          <div style={{ marginBottom: '40px', padding: '40px 0' }}>
+            <h1 style={{ fontSize: '2.5rem', marginBottom: '20px', color: '#333' }}>
+              Welcome to QueueManagement
+            </h1>
+            <p style={{ fontSize: '1.2rem', color: '#666', marginBottom: '30px' }}>
+              Experience Seamless, Real-Time Appointment Management at Ashok Hospital
             </p>
           </div>
 
           {/* Quick Actions */}
-          <div className="flex flex-col sm:flex-row gap-8 mb-16 justify-center">
+          <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginBottom: '40px' }}>
             <Button
               onClick={() => navigate('/booking')}
-              className="bg-white text-black hover:bg-gray-50 px-12 py-6 text-xl font-medium rounded-lg transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:bg-white/80 border border-gray-200"
-              style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}
+              style={{ padding: '15px 30px', fontSize: '1.1rem' }}
             >
-              <BookOpen className="mr-0 w-7 h-7" />
+              <BookOpen style={{ marginRight: '8px' }} />
               Book Appointment
             </Button>
             <Button
               onClick={() => navigate('/verify-otp')}
-              className="bg-white text-black hover:bg-gray-50 px-12 py-6 text-xl font-medium rounded-lg transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:bg-white/80 border border-gray-200"
-              style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}
+              style={{ padding: '15px 30px', fontSize: '1.1rem' }}
             >
-              <Phone className="mr-0 w-7 h-7" />
+              <Phone style={{ marginRight: '8px' }} />
               Login with OTP
+            </Button>
+            <Button
+              onClick={() => navigate('/doctor')}
+              style={{ padding: '15px 30px', fontSize: '1.1rem', backgroundColor: '#10b981' }}
+            >
+              👨‍⚕️ Doctor Dashboard
             </Button>
           </div>
 
           {/* Features Grid */}
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-300">
-              <div className="bg-blue-500/20 rounded-full p-3 w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                <Clock className="w-8 h-8 text-blue-400" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Real-Time Tracking</h3>
-              <p className="text-blue-200">Monitor your appointment status live with instant updates</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+            <div style={{ padding: '20px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+              <h3 style={{ fontSize: '1.3rem', marginBottom: '10px', color: '#333' }}>Real-Time Tracking</h3>
+              <p style={{ color: '#666' }}>Monitor your appointment status live with instant updates</p>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-300">
-              <div className="bg-purple-500/20 rounded-full p-3 w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                <User className="w-8 h-8 text-purple-400" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Expert Doctors</h3>
-              <p className="text-blue-200">Choose from our team of experienced healthcare professionals</p>
+            <div style={{ padding: '20px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+              <h3 style={{ fontSize: '1.3rem', marginBottom: '10px', color: '#333' }}>Expert Doctors</h3>
+              <p style={{ color: '#666' }}>Choose from our team of experienced healthcare professionals</p>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/20 transition-all duration-300">
-              <div className="bg-green-500/20 rounded-full p-3 w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                <Heart className="w-8 h-8 text-green-400" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Secure & Private</h3>
-              <p className="text-blue-200">Your health information is protected with bank-level security</p>
+            <div style={{ padding: '20px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+              <h3 style={{ fontSize: '1.3rem', marginBottom: '10px', color: '#333' }}>Secure & Private</h3>
+              <p style={{ color: '#666' }}>Your health information is protected with bank-level security</p>
             </div>
           </div>
         </div>
@@ -234,275 +247,580 @@ const UserDashboard = () => {
 
   // Show dashboard when user exists
   return (
-    <div className="min-h-screen w-full relative">
-      {/* Emerald Void */}
-      <div
-        className="absolute inset-0 z-0"
-        style={{
-          background: "radial-gradient(125% 125% at 50% 90%, #000000 40%, #072607 100%)",
-        }}
-      />
-      
-      {/* Main Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+    <div style={{ minHeight: '100vh', padding: '20px', backgroundColor: '#f5f5f5' }}>
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
         
-        {/* Hero Section */}
-        <div className="text-center mb-0 flex flex-col items-center justify-center min-h-[60vh]">
-          <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-full mb-12 shadow-2xl border border-white/20">
-            <div className={`w-3 h-3 rounded-full shadow-lg ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`}></div>
-            <span className="text-sm font-medium tracking-wider uppercase" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-              {isConnected ? 'Live Queue Tracking' : 'Offline Mode'}
-            </span>
-          </div>
-          <h2 className="text-4xl md:text-5xl font-medium text-white mb-4 leading-tight max-w-5xl mx-auto tracking-tight" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-          Say Goodbye to Long Waits Experience Seamless, Real-Time Appointment Management at <span className="italic text-orange-500">(Ashok Hospital)</span>
-          </h2>
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto leading-relaxed">
-          Book, track, and get notified — all from your phone.         </p>
+        {/* Header */}
+        <div className='font-bold item-center' style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <h1 style={{ fontSize: '2.5rem', marginBottom: '20px', color: '#333' }}>
+            Welcome, {user.name}!
+          </h1>
+          <p style={{ fontSize: '1.2rem', color: '#666', marginBottom: '20px', fontWeight: 600 }}>
+            Skip the wait, join the queue, and see your doctor faster!
+          </p>
         </div>
 
         {/* Quick Actions */}
-        <div className="flex flex-col sm:flex-row gap-8 mb-16 justify-center">
+        <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginBottom: '40px' }}>
           <Button
             onClick={() => setShowBookingForm(true)}
-            className="bg-white text-black hover:bg-gray-50 px-12 py-6 text-xl font-medium rounded-lg transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:bg-white/80 border border-gray-200"
-            style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}
+            style={{ padding: '15px 30px', fontSize: '1.1rem' }}
           >
-            <BookOpen className="mr-0 w-7 h-7" />
             Book Appointment
-          </Button>
-          <Button
-            onClick={() => {/* Contact us action */}}
-            className="bg-white text-black hover:bg-gray-50 px-12 py-6 text-xl font-medium rounded-lg transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:bg-white/80 border border-gray-200"
-            style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}
-          >
-            <User className="mr-0 w-7 h-7" />
-            Contact Us
           </Button>
         </div>
 
+        {/* User Info Card
+        <div style={{ 
+          padding: '20px', 
+          backgroundColor: 'white', 
+          borderRadius: '8px', 
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          marginBottom: '30px',
+          textAlign: 'center'
+        }}>
+          <div style={{ 
+            padding: '15px', 
+            backgroundColor: '#f8f9fa', 
+            borderRadius: '6px',
+            border: '1px solid #e9ecef',
+            display: 'inline-block'
+          }}>
+            <p style={{ margin: '0', color: '#495057' }}>
+              <strong>Phone:</strong> {user.phoneNumber} | <strong>Age:</strong> {user.age} | <strong>Gender:</strong> {user.gender}
+            </p>
+          </div>
+        </div> */}
 
-
-        {/* Current Appointment Section */}
-        {currentAppointment && (
-          <div className="mb-12">
-            <div className="bg-gradient-to-br from-gray-900 to-black text-white rounded-3xl p-8 shadow-2xl border border-gray-800">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg">
-                    <Stethoscope className="w-8 h-8 text-black" />
+        {/* Doctor Selection Section */}
+        <div style={{ 
+          padding: '20px', 
+          backgroundColor: 'white', 
+          borderRadius: '8px', 
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          marginBottom: '20px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h4 style={{ fontSize: '1.2rem', color: '#333', margin: 0 , fontWeight: 600 }}>
+              Filter by Doctor
+            </h4>
+            <span style={{ fontSize: '0.9rem', color: '#666' }}>
+              {selectedDoctor ? `Showing: ${selectedDoctor.name}` : 'Showing: All Doctors'}
+            </span>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className={`flex items-center gap-2 px-5 py-3 rounded-lg text-white font-semibold transition-all duration-200 shadow-md
+                    ${selectedDoctor ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-black hover:bg-gray-900'}
+                    focus:outline-none focus:ring-2 focus:ring-emerald-400`}
+                >
+                  {selectedDoctor ? selectedDoctor.name : 'Select Doctor'}
+                  <ChevronDown style={{ width: '16px', height: '16px' }} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent 
+                style={{
+                  backgroundColor: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
+                  padding: '8px',
+                  minWidth: '250px'
+                }}
+              >
+                <div style={{ padding: '8px 12px', borderBottom: '1px solid #e5e7eb', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151' }}>
+                    Available Doctors
+                  </span>
+                </div>
+                
+                {/* Show All Option */}
+                <DropdownMenuItem
+                  onClick={() => handleDoctorSelect(null)}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    border: '1px solid transparent',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#f3f4f6'
+                    e.target.style.borderColor = '#10b981'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'transparent'
+                    e.target.style.borderColor = 'transparent'
+                  }}
+                >
+                  <div style={{ 
+                    width: '32px', 
+                    height: '32px', 
+                    backgroundColor: '#10b981', 
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <User style={{ width: '16px', height: '16px', color: 'white' }} />
                   </div>
                   <div>
-                    <h3 className="text-3xl font-black text-white">
-                      Dr. {currentAppointment.doctor.name}
-                    </h3>
-                    <p className="text-gray-300 text-lg">{currentAppointment.doctor.specialization}</p>
+                    <div style={{ fontWeight: '500', color: '#111827' }}>Show All Doctors</div>
+                    <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                      View appointments from all doctors
+                    </div>
                   </div>
-                </div>
-                <div className="bg-white text-black px-6 py-3 rounded-full text-sm font-black shadow-lg">
-                  {currentAppointment.status.replace('-', ' ').toUpperCase()}
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-md">
-                    <Calendar className="w-6 h-6 text-black" />
-                  </div>
-                  <div>
-                    <p className="text-gray-300 text-sm font-medium">Appointment Date</p>
-                    <span className="text-xl font-black text-white">
-                      {format(new Date(currentAppointment.appointmentDate), 'MMM dd, yyyy')}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-md">
-                    <Clock className="w-6 h-6 text-black" />
-                  </div>
-                  <div>
-                    <p className="text-gray-300 text-sm font-medium">Time Slot</p>
-                    <span className="text-xl font-black text-white">{currentAppointment.timeSlot}</span>
-                  </div>
-                </div>
-              </div>
+                </DropdownMenuItem>
+                
+                {/* Individual Doctors */}
+                {doctors.map((doctor) => (
+                  <DropdownMenuItem
+                    key={doctor.id}
+                    onClick={() => handleDoctorSelect(doctor)}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      border: '1px solid transparent',
+                      transition: 'all 0.2s',
+                      backgroundColor: selectedDoctor?.id === doctor.id ? '#f0fdf4' : 'transparent',
+                      borderColor: selectedDoctor?.id === doctor.id ? '#10b981' : 'transparent'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedDoctor?.id !== doctor.id) {
+                        e.target.style.backgroundColor = '#f3f4f6'
+                        e.target.style.borderColor = '#10b981'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedDoctor?.id !== doctor.id) {
+                        e.target.style.backgroundColor = selectedDoctor?.id === doctor.id ? '#f0fdf4' : 'transparent'
+                        e.target.style.borderColor = selectedDoctor?.id === doctor.id ? '#10b981' : 'transparent'
+                      }
+                    }}
+                  >
+                    <div style={{ 
+                      width: '32px', 
+                      height: '32px', 
+                      backgroundColor: '#10b981', 
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Stethoscope style={{ width: '16px', height: '16px', color: 'white' }} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '500', color: '#111827' }}>{doctor.name}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                        {doctor.specialization} • Room {doctor.room}
+                      </div>
+                    </div>
+                    {selectedDoctor?.id === doctor.id && (
+                      <div style={{ 
+                        width: '8px', 
+                        height: '8px', 
+                        backgroundColor: '#10b981', 
+                        borderRadius: '50%',
+                        marginLeft: 'auto'
+                      }}></div>
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            {/* Clear Selection Button */}
+            {selectedDoctor && (
+              <Button
+                onClick={() => handleDoctorSelect(null)}
+                style={{ 
+                  padding: '8px 16px', 
+                  fontSize: '0.9rem',
+                  backgroundColor: '#f3f4f6',
+                  color: '#6b7280',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                Clear Filter
+              </Button>
+            )}
+          </div>
+        </div>
 
-              <div className="bg-white text-black rounded-2xl p-8 text-center shadow-xl">
-                <div className="text-6xl font-black mb-4">
-                  A{currentAppointment.queueNumber?.toString().padStart(2, '0') || '01'}
-                </div>
-                <p className="text-2xl font-black text-gray-800">
-                  Estimated wait time: {currentAppointment.estimatedWaitTime} minutes
-                </p>
-              </div>
+        {/* Appointments Section */}
+        <div style={{ 
+          padding: '30px', 
+          backgroundColor: 'white', 
+          borderRadius: '8px', 
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          marginBottom: '30px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '1.5rem', color: '#333', margin: 0 }}>
+              Your Appointments
+              {selectedDoctor && (
+                <span style={{ fontSize: '1rem', color: '#10b981', marginLeft: '10px' }}>
+                  • {selectedDoctor.name}
+                </span>
+              )}
+            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ 
+                width: '8px', 
+                height: '8px', 
+                backgroundColor: '#10b981', 
+                borderRadius: '50%',
+                animation: 'pulse 2s infinite'
+              }}></div>
+              <span style={{ fontSize: '0.9rem', color: '#666' }}>Live Updates Active</span>
             </div>
           </div>
-        )}
 
-
-        {/* Live Appointment Tracker */}
-        
-
-        {/* Live Queue Status */}
-        <div className="mb-12">
-          <div className="rounded-xl border border-gray-800 overflow-hidden">
-            <div className="bg-black text-white p-8 border-b border-gray-800">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg">
-                    <Clock className="w-6 h-6 text-black" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-medium text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Live Queue Status</h3>
-                    <p className="text-gray-300" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Real-time appointment tracking</p>
-                  </div>
-                </div>
-                <div className="bg-black text-white px-4 py-2 rounded-lg shadow-xl text-center border border-emerald-500/30" style={{
-                  background: 'linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #001a00 100%)',
-                  boxShadow: '0 4px 20px rgba(16, 185, 129, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-                }}>
-                  <div className="text-xs font-medium text-emerald-300" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-                    {format(currentTime, 'MMM dd, yyyy')}
-                  </div>
-                  <div className="text-sm font-bold text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-                    {format(currentTime, 'hh:mm:ss a')}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-8">
-                          {/* Live Tracking Status */}
-            <div className="space-y-8">
-              {isConnected && (
-                <div className="flex items-center justify-center mb-4 space-x-4">
-                  <div className="inline-flex items-center space-x-2 bg-emerald-500/20 backdrop-blur-sm text-emerald-300 px-4 py-2 rounded-full border border-emerald-500/30">
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                    <span className="text-xs font-medium" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-                      Real-time updates active
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      console.log('Manual refresh triggered')
-                      fetchAppointments()
-                      fetchCurrentStatus()
-                    }}
-                    className="inline-flex items-center space-x-2 bg-blue-500/20 backdrop-blur-sm text-blue-300 px-4 py-2 rounded-full border border-blue-500/30 hover:bg-blue-500/30 transition-colors"
-                  >
-                    <span className="text-xs font-medium" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-                      Refresh Data
-                    </span>
-                  </button>
-                </div>
-              )}
-                {appointments.length > 0 ? (
-                  appointments.map((appointment, index) => (
-                    <div key={appointment._id} className="mb-8">
-                      <div className="flex items-center space-x-4 mb-6 p-4 rounded-xl border border-emerald-500/30" style={{
-                        background: 'linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #001a00 100%)'
-                      }}>
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                          <Stethoscope className="w-6 h-6 text-white" />
+          {/* Current Appointment Status */}
+          {appointments.length > 0 && appointments.some(apt => apt.status === 'waiting' || apt.status === 'in-progress') && (
+            <div style={{ 
+              padding: '20px', 
+              backgroundColor: '#f0fdf4', 
+              borderRadius: '8px', 
+              border: '2px solid #10b981',
+              marginBottom: '20px'
+            }}>
+              <h4 style={{ fontSize: '1.1rem', color: '#065f46', marginBottom: '15px', textAlign: 'center' }}>
+                🚀 Current Appointment Status
+              </h4>
+              {appointments
+                .filter(apt => apt.status === 'waiting' || apt.status === 'in-progress')
+                .sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date))
+                .map((appointment, index) => {
+                  const statusInfo = getStatusInfo(appointment.status)
+                  const StatusIcon = statusInfo.icon
+                  
+                  return (
+                    <div key={appointment.id} style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
+                      padding: '15px',
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      border: '1px solid #d1fae5',
+                      marginBottom: index < appointments.filter(apt => apt.status === 'waiting' || apt.status === 'in-progress').length - 1 ? '10px' : '0'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <div style={{
+                          backgroundColor: '#10b981',
+                          color: 'white',
+                          padding: '12px 16px',
+                          borderRadius: '25px',
+                          fontSize: '1.2rem',
+                          fontWeight: 'bold',
+                          minWidth: '60px',
+                          textAlign: 'center'
+                        }}>
+                          #{appointment.queue_number || 'N/A'}
                         </div>
                         <div>
-                          <h4 className="text-lg font-medium text-white" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-                            {appointment.doctor?.name || 'Doctor'}
-                          </h4>
-                          <p className="text-xs text-emerald-300" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-                            {appointment.doctor?.specialization || 'Specialist'} • Room {appointment.doctor?.room || 'N/A'}
-                          </p>
+                          <div style={{ fontWeight: '600', color: '#065f46', marginBottom: '5px' }}>
+                            {appointment.doctor?.name || 'Unknown Doctor'}
+                          </div>
+                          <div style={{ fontSize: '0.9rem', color: '#047857' }}>
+                            {appointment.appointment_date ? formatDate(appointment.appointment_date) : 'N/A'} at {appointment.time_slot || 'N/A'}
+                          </div>
                         </div>
                       </div>
                       
-                      <div className="overflow-hidden rounded-2xl border border-gray-700 bg-gray-900">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="bg-black text-white border-b border-gray-700">
-                              <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Queue No.</th>
-                              <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Patient Name</th>
-                              <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Patient Status</th>
-                              <th className="text-left py-4 px-6 font-medium text-sm uppercase tracking-wider" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>Est. Wait</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr className={`border-b border-gray-700 transition-all duration-300 hover:bg-gray-900 ${
-                              updatedAppointmentId === appointment._id 
-                                ? 'bg-emerald-900/50 border-emerald-500/50 shadow-lg shadow-emerald-500/20' 
-                                : 'bg-black'
-                            }`}>
-                              <td className="py-4 px-6">
-                                <span className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">
-                                  {appointment.queueNumber?.toString().padStart(2, '0') || '01'}
-                                </span>
-                              </td>
-                              <td className="py-4 px-6">
-                                <div className="flex items-center space-x-3">
-                                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <span className="text-blue-600 text-xs font-medium">
-                                      {(appointment.patientName || appointment.patient?.name || 'U').charAt(0).toUpperCase()}
-                                    </span>
-                                  </div>
-                                  <span className="text-white font-medium">
-                                    {appointment.patientName || appointment.patient?.name || 'Unknown'}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="py-4 px-6">
-                                <div className="flex items-center space-x-2">
-                                  <div className={`w-2 h-2 rounded-full shadow-lg ${
-                                    appointment.status === 'waiting' ? 'bg-yellow-400 animate-pulse' :
-                                    appointment.status === 'in-progress' ? 'bg-green-400 animate-pulse' :
-                                    appointment.status === 'completed' ? 'bg-red-400' :
-                                    'bg-blue-400 animate-pulse'
-                                  }`}></div>
-                                  <span className={`font-medium ${
-                                    appointment.status === 'waiting' ? 'text-yellow-400' :
-                                    appointment.status === 'in-progress' ? 'text-green-400' :
-                                    appointment.status === 'completed' ? 'text-red-400' :
-                                    'text-blue-400'
-                                  }`}>
-                                    {appointment.status === 'waiting' ? 'Waiting' :
-                                     appointment.status === 'in-progress' ? 'In Consultation' :
-                                     appointment.status === 'completed' ? 'Completed' :
-                                     'Up Next'}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="py-4 px-6 text-white font-medium">
-                                {appointment.status === 'in-progress' || appointment.status === 'completed' ? '-' : '5-8 min'}
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <span style={{
+                          backgroundColor: statusInfo.bgColor,
+                          color: statusInfo.color,
+                          padding: '8px 16px',
+                          borderRadius: '20px',
+                          fontSize: '0.9rem',
+                          fontWeight: '500',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}>
+                          <StatusIcon style={{ width: '16px', height: '16px' }} />
+                          {statusInfo.text}
+                        </span>
+                        
+                        {appointment.estimated_wait_time && (
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#10b981' }}>
+                              {appointment.estimated_wait_time} min
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: '#047857' }}>Est. Wait</div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-16">
-                    <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Stethoscope className="w-10 h-10 text-gray-400" />
-                    </div>
-                    <p className="text-gray-300 font-black text-lg mb-2" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-                      No appointments found
-                    </p>
-                    <p className="text-gray-500">Book an appointment to see it here</p>
+                  )
+                })}
+            </div>
+          )}
+
+          {/* Appointment Statistics */}
+          {appointments.length > 0 && (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+              gap: '15px', 
+              marginBottom: '20px' 
+            }}>
+              <div style={{ 
+                padding: '15px', 
+                backgroundColor: '#f0f9ff', 
+                borderRadius: '8px', 
+                border: '1px solid #0ea5e9',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#0c4a6e', marginBottom: '5px' }}>
+                  {appointments.length}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#0c4a6e' }}>
+                  {selectedDoctor ? 'Appointments' : 'Total Appointments'}
+                </div>
+                {selectedDoctor && (
+                  <div style={{ fontSize: '0.7rem', color: '#0ea5e9', marginTop: '2px' }}>
+                    for {selectedDoctor.name}
                   </div>
                 )}
               </div>
-                
-          </div>
+              
+              <div style={{ 
+                padding: '15px', 
+                backgroundColor: '#fef3c7', 
+                borderRadius: '8px', 
+                border: '1px solid #f59e0b',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#92400e', marginBottom: '5px' }}>
+                  {appointments.filter(apt => apt.status === 'waiting').length}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#92400e' }}>Waiting</div>
+              </div>
+              
+              <div style={{ 
+                padding: '15px', 
+                backgroundColor: '#dbeafe', 
+                borderRadius: '8px', 
+                border: '1px solid #3b82f6',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1e40af', marginBottom: '5px' }}>
+                  {appointments.filter(apt => apt.status === 'in-progress').length}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#1e40af' }}>In Consultation</div>
+              </div>
+              
+              <div style={{ 
+                padding: '15px', 
+                backgroundColor: '#dcfce7', 
+                borderRadius: '8px', 
+                border: '1px solid #10b981',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#065f46', marginBottom: '5px' }}>
+                  {appointments.filter(apt => apt.status === 'completed').length}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#065f46' }}>Completed</div>
+              </div>
+            </div>
+          )}
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div style={{ 
+                width: '40px', 
+                height: '40px', 
+                border: '4px solid #f3f3f3',
+                borderTop: '4px solid #10b981',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto 20px'
+              }}></div>
+              <p style={{ color: '#666' }}>Loading your appointments...</p>
+            </div>
+          ) : appointments.length > 0 ? (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #e9ecef' }}>
+                    <th style={{ padding: '15px', textAlign: 'left', color: '#495057', fontWeight: '600' }}>Token No.</th>
+                    <th style={{ padding: '15px', textAlign: 'left', color: '#495057', fontWeight: '600' }}>Date</th>
+                    <th style={{ padding: '15px', textAlign: 'left', color: '#495057', fontWeight: '600' }}>Time</th>
+                    <th style={{ padding: '15px', textAlign: 'left', color: '#495057', fontWeight: '600' }}>Consultant</th>
+                    <th style={{ padding: '15px', textAlign: 'left', color: '#495057', fontWeight: '600' }}>Status</th>
+                    <th style={{ padding: '15px', textAlign: 'left', color: '#495057', fontWeight: '600' }}>Queue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {appointments.map((appointment, index) => {
+                    const statusInfo = getStatusInfo(appointment.status)
+                    const StatusIcon = statusInfo.icon
+                    
+                    return (
+                      <tr key={appointment.id || index} style={{ 
+                        borderBottom: '1px solid #e9ecef',
+                        backgroundColor: index % 2 === 0 ? '#f8f9fa' : 'white'
+                      }}>
+                        <td style={{ padding: '15px' }}>
+                          <span style={{
+                            backgroundColor: '#10b981',
+                            color: 'white',
+                            padding: '8px 12px',
+                            borderRadius: '20px',
+                            fontSize: '0.9rem',
+                            fontWeight: 'bold',
+                            display: 'inline-block'
+                          }}>
+                            #{appointment.queue_number || 'N/A'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '15px', color: '#495057' }}>
+                          {appointment.appointment_date ? formatDate(appointment.appointment_date) : 'N/A'}
+                        </td>
+                        <td style={{ padding: '15px', color: '#495057' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Clock style={{ width: '16px', height: '16px', color: '#666' }} />
+                            {appointment.time_slot || 'N/A'}
+                          </div>
+                        </td>
+                        <td style={{ padding: '15px', color: '#495057' }}>
+                          {appointment.doctor ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Stethoscope style={{ width: '16px', height: '16px', color: '#666' }} />
+                              <div>
+                                <div style={{ fontWeight: '500' }}>{appointment.doctor.name}</div>
+                                <div style={{ fontSize: '0.8rem', color: '#666' }}>
+                                  {appointment.doctor.specialization} • Room {appointment.doctor.room}
+                                </div>
+                              </div>
+                            </div>
+                          ) : 'N/A'}
+                        </td>
+                        <td style={{ padding: '15px' }}>
+                          <span style={{
+                            backgroundColor: statusInfo.bgColor,
+                            color: statusInfo.color,
+                            padding: '6px 12px',
+                            borderRadius: '20px',
+                            fontSize: '0.8rem',
+                            fontWeight: '500',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            width: 'fit-content'
+                          }}>
+                            <StatusIcon style={{ width: '14px', height: '14px' }} />
+                            {statusInfo.text}
+                          </span>
+                        </td>
+                        <td style={{ padding: '15px', color: '#495057' }}>
+                          {appointment.estimated_wait_time ? (
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#10b981' }}>
+                                {appointment.estimated_wait_time} min
+                              </div>
+                              <div style={{ fontSize: '0.8rem', color: '#666' }}>Est. Wait</div>
+                            </div>
+                          ) : 'N/A'}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div style={{ 
+                width: '80px', 
+                height: '80px', 
+                backgroundColor: '#f8f9fa',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 20px'
+              }}>
+                <Calendar style={{ width: '40px', height: '40px', color: '#666' }} />
+              </div>
+              <h4 style={{ fontSize: '1.2rem', color: '#333', marginBottom: '10px' }}>
+                {selectedDoctor ? `No Appointments with ${selectedDoctor.name}` : 'No Appointments Yet'}
+              </h4>
+              <p style={{ color: '#666', marginBottom: '20px' }}>
+                {selectedDoctor 
+                  ? `You haven't booked any appointments with ${selectedDoctor.name} yet.`
+                  : "You haven't booked any appointments yet. Click 'Book Appointment' to schedule your first visit."
+                }
+              </p>
+              {!selectedDoctor && (
+                <Button
+                  onClick={() => setShowBookingForm(true)}
+                  style={{ padding: '12px 24px', fontSize: '1rem' }}
+                >
+                  <BookOpen style={{ marginRight: '8px', width: '16px', height: '16px' }} />
+                  Book Your First Appointment
+                </Button>
+              )}
+              {selectedDoctor && (
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                  <Button
+                    onClick={() => setShowBookingForm(true)}
+                    style={{ padding: '12px 24px', fontSize: '1rem' }}
+                  >
+                    <BookOpen style={{ marginRight: '8px', width: '16px', height: '16px' }} />
+                    Book with {selectedDoctor.name}
+                  </Button>
+                  <Button
+                    onClick={() => handleDoctorSelect(null)}
+                    style={{ 
+                      padding: '12px 24px', 
+                      fontSize: '1rem',
+                      backgroundColor: '#f3f4f6',
+                      color: '#6b7280',
+                      border: '1px solid #d1d5db'
+                    }}
+                  >
+                    Show All Doctors
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-
-        
-
       </div>
 
       {/* Booking Form Modal */}
       {showBookingForm && (
         <BookingForm onBookingSuccess={handleBookingSuccess} />
       )}
-    </div>
+
+      {/* CSS for animations */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
     </div>
   )
 }
