@@ -11,7 +11,6 @@ import { authAPI, doctorsAPI, slotsAPI, appointmentsAPI } from '../services/supa
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import moment from 'moment'
-
 const BookingForm = ({ onBookingSuccess }) => {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)

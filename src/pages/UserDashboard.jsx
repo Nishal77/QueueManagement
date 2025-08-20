@@ -22,7 +22,7 @@ const UserDashboard = () => {
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
 
   // Fetch doctors
   const fetchDoctors = async () => {
@@ -269,7 +269,18 @@ const UserDashboard = () => {
       <div className="max-w-7xl mx-auto px-6 py-8">
         
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-12 relative">
+          <div className="absolute top-0 right-0">
+            <Button
+              onClick={logout}
+              variant="outline"
+              className="border-2 border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 px-4 py-2 rounded-xl font-semibold transition-all duration-300 shadow-sm hover:shadow-md"
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+          
           <div className="inline-flex items-center px-4 py-2 bg-black text-white rounded-full text-sm font-medium shadow-lg mb-6">
             <Star className="w-4 h-4 mr-2" />
             Welcome Back
