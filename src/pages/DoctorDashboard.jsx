@@ -90,7 +90,7 @@ const DoctorDashboard = () => {
   useEffect(() => {
     if (selectedDoctor) {
       const autoRefreshTimer = setInterval(() => {
-        console.log('🔄 Auto-refreshing appointments...')
+        console.log(' Auto-refreshing appointments...')
         fetchAppointments()
       }, 30000) // 30 seconds
       
@@ -448,7 +448,7 @@ const DoctorDashboard = () => {
           </div>
           
           <h2 className="text-4xl md:text-6xl lg:text-7xl font-medium text-white mb-8 leading-tight max-w-5xl mx-auto tracking-tight" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
-            Healthcare Management System
+            Queue Smart
           </h2>
           <p className="text-xl md:text-2xl text-gray-200 max-w-3xl mx-auto leading-relaxed font-light" style={{ fontFamily: 'Bricolage Grotesque, sans-serif' }}>
             Manage appointments, track patient progress, and provide exceptional care

@@ -282,7 +282,7 @@ const UserDashboard = () => {
           </div>
           
           <div className="inline-flex items-center px-4 py-2 bg-black text-white rounded-full text-sm font-medium shadow-lg mb-6">
-            <Star className="w-4 h-4 mr-2" />
+           
             Welcome Back
           </div>
           
@@ -405,7 +405,7 @@ const UserDashboard = () => {
           {appointments.length > 0 && appointments.some(apt => apt.status === 'waiting' || apt.status === 'in-progress') && (
             <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-6 mb-8">
               <h4 className="text-xl font-bold text-green-800 mb-4 text-center">
-                🚀 Current Appointment Status
+                 Current Appointment Status
               </h4>
               {appointments
                 .filter(apt => apt.status === 'waiting' || apt.status === 'in-progress')

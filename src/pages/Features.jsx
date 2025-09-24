@@ -11,18 +11,12 @@ const featuresList = [
         title: 'Seamless Appointment Booking',
         description: 'Book appointments easily and receive instant confirmation.',
     },
-    {
-        title: 'Doctor Dashboard',
-        description: 'Doctors can manage appointments and view patient queues efficiently.',
-    },
+    
     {
         title: 'Live Preview',
         description: 'Preview queue status and upcoming appointments in real time.',
     },
-    {
-        title: 'Mobile Friendly',
-        description: 'Access the system from any device, anywhere.',
-    },
+   
 ]
 
 const Features = () => {
@@ -32,7 +26,7 @@ const Features = () => {
         <div className="min-h-screen bg-white py-12 px-4 relative">
             <button
                 onClick={() => navigate('/')}
-                className="absolute top-6 left-6 bg-black text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:text-black border border-black transition-all duration-300"
+                className="absolute top-6 left-16 bg-black text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:text-black border border-black transition-all duration-300"
             >
                 Back to Landing Page
             </button>

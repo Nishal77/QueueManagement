@@ -322,8 +322,8 @@ const BookingForm = ({ onBookingSuccess }) => {
   ]
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-black via-gray-900 to-black backdrop-blur-xl flex items-center justify-center p-4 z-50">
-      <div className="bg-white border-4 border-black rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.3)] w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden relative">
+    <div className="fixed inset-0 bg-gradient-to-b from-[#f8fafc] via-[#a7f3d0] to-[#a7f3d0] backdrop-blur-xl flex items-center justify-center p-4 z-50">
+      <div className="bg-white border-4 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.3)] w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden relative">
         
         {/* Decorative Elements */}
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-600 via-blue-600 to-green-600"></div>
@@ -334,7 +334,7 @@ const BookingForm = ({ onBookingSuccess }) => {
         <div className="bg-gradient-to-r from-black via-gray-900 to-black text-white p-6 flex-shrink-0 relative overflow-hidden">
           {/* Header Background Pattern */}
           <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]"></div>
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,rgba(218, 95, 95, 0.1),transparent_50%)]"></div>
             <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.1),transparent_50%)]"></div>
           </div>
           
@@ -445,7 +445,7 @@ const BookingForm = ({ onBookingSuccess }) => {
                 <Button
                   onClick={handleSendOTP}
                   disabled={loading}
-                  className="w-full bg-black hover:bg-gray-800 text-white py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  className="w-full bg-black hover:bg-gray-800 text-white py-4 rounded-xl  text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
                 >
                   {loading ? (
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto"></div>
@@ -549,7 +549,7 @@ const BookingForm = ({ onBookingSuccess }) => {
                   <Button
                     onClick={handleVerifyOTP}
                     disabled={loading}
-                    className="w-full bg-black hover:bg-gray-800 text-white py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+                    className="w-full bg-black hover:bg-gray-800 text-white py-4 rounded-xl  text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
                   >
                     {loading ? (
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto"></div>
@@ -607,7 +607,7 @@ const BookingForm = ({ onBookingSuccess }) => {
                                   <Stethoscope className="w-4 h-4 text-white" />
                                 </div>
                                 <div>
-                                  <div className="font-semibold">Dr. {doctor.name}</div>
+                                  <div className="font-semibold"> {doctor.name}</div>
                                   <div className="text-sm text-gray-500">{doctor.specialization} • Room {doctor.room}</div>
                                 </div>
                               </div>
@@ -623,7 +623,7 @@ const BookingForm = ({ onBookingSuccess }) => {
                 <Button
                   onClick={() => setStep(4)}
                   disabled={!selectedDoctor}
-                  className="w-full bg-gradient-to-r from-black to-gray-800 hover:from-gray-800 hover:to-black text-white py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  className="w-full bg-gradient-to-r from-black to-gray-800 hover:from-gray-800 hover:to-black text-white py-4 rounded-2xl  text-lg transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
                   Continue to Date & Time
                   <ArrowRight className="w-6 h-6 ml-3" />
@@ -632,7 +632,7 @@ const BookingForm = ({ onBookingSuccess }) => {
                 <Button
                   onClick={() => setStep(2)}
                   variant="outline"
-                  className="w-full border-3 border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 py-4 rounded-2xl font-bold text-lg transition-all duration-300 shadow-sm hover:shadow-md"
+                  className="w-full border-3 border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 py-4 rounded-2xl text-lg transition-all duration-300 shadow-sm hover:shadow-md"
                 >
                   <ArrowLeft className="w-5 h-5 mr-3" />
                   Back

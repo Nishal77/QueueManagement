@@ -38,41 +38,45 @@ const LandingPage = () => {
   }
 
   return (
-    <div className="min-h-screen w-full relative bg-gradient-to-b from-[#f8fafc] via-[#a7f3d0] to-[#38bdf8]">
+    <div className=" relative bg-gradient-to-b from-[#a7f3d0] via-[#a7f3d0] to-[#38bdf8]">
       {/* Header */}
-      <div className="relative z-10 p-6 border-b border-gray-200">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-black text-xl font-bold">QueueSmart</span>
-          </div>
-          <Button
-            onClick={() => navigate('/booking')}
-            className="bg-black hover:bg-gray-800 text-white px-6 py-2 rounded-lg font-semibold transition-all duration-300 flex items-center"
-          >
-            <Copy className="w-4 h-4 mr-2" />
-            Book Appointment
-          </Button>
-        </div>
+      <div className="fixed top-0 left-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-gray-200 p-6">
+  <div className="max-w-6xl mx-auto flex items-center justify-between">
+    <div className="flex items-center space-x-3">
+      <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
+        <Shield className="w-5 h-5 text-white" />
       </div>
+      <span className="text-black text-xl font-bold">QueueSmart</span>
+    </div>
+    <Button
+      onClick={() => navigate('/booking')}
+      className="bg-black hover:bg-gray-800 text-white px-6 py-2 rounded-lg font-semibold transition-all duration-300 flex items-center"
+    >
+      <Copy className="w-4 h-4 mr-2" />
+      Book Appointment
+    </Button>
+  </div>
+</div>
+
 
       {/* Main Content */}
       <div className="relative z-10 min-h-screen flex items-center justify-center px-6">
         <div className="text-center max-w-4xl mx-auto">
           {/* Banner */}
           <div >
-            <Button
-              onClick={() => navigate('/features')}
-              className="inline-flex items-center px-4 py-2 bg-gray-100 border border-gray-200 rounded-full text-sm text-black mb-2 hover:bg-black hover:text-white transition-all duration-300"
+          <Button
+  onClick={() => {
+    document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
+  }}
+  className="inline-flex items-center px-4 py-2 bg-gray-100 border border-gray-200 rounded-full text-sm text-black mb-2 hover:bg-black hover:text-white transition-all duration-300"
+>
+  <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+  <span>2+ New Features</span>
+  <Zap className="w-4 h-4 ml-2 text-black" />
+  <span className="ml-2">Read More →</span>
+</Button>
 
-            ><div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-              <span>5+ New Features</span>
-              <Zap className="w-4 h-4 ml-2 text-black" />
-              <span className="ml-2">Read More →</span>
 
-            </Button>
           </div>
 
           {/* Main Heading */}
@@ -123,6 +127,75 @@ const LandingPage = () => {
           </div>
         </div>
       </div>
+     <div>
+
+        
+      <section id="features" className="py-20 px-10">
+  <h2 className="text-3xl font-bold text-center mb-6">Features</h2>
+  <p className="text-center text-gray-600 mb-12">
+    Explore some of the powerful tools QueueSmart provides.
+  </p>
+
+  <div className="relative z-10 p-10">
+    <div className="flex flex-wrap justify-center gap-8">
+      {/* Card 1 */}
+      <div className="w-80 bg-white/30 backdrop-blur-md shadow-lg rounded-2xl border border-white/20 
+                      transition-transform duration-300 ease-out
+                      hover:scale-105 hover:-translate-y-2 hover:translate-x-2
+                      hover:shadow-2xl hover:shadow-blue-200/50">
+        <div className="p-6">
+          <h2 className="text-xl font-bold text-gray-800">Live Preview</h2>
+          <p className="text-gray-600 mt-2">
+          <h2>Preview queue status and upcoming appointments in real time.</h2>
+          </p>
+        </div>
+      </div>
+
+      {/* Card 2 */}
+      <div className="w-80 bg-white/30 backdrop-blur-md shadow-lg rounded-2xl border border-white/20 
+                      transition-transform duration-300 ease-out
+                      hover:scale-105 hover:-translate-y-2 hover:translate-x-2
+                      hover:shadow-2xl hover:shadow-blue-200/50">
+      <div className="p-6">
+  <h2 className="text-xl font-bold text-gray-800">
+    Real-Time Queue Updates
+  </h2>
+  <p className="text-gray-600 mt-2">
+    Get live updates on your queue status and estimated waiting time.
+  </p>
+</div>
+
+      </div>
+
+      {/* Card 3 */}
+      <div className="w-80 bg-white/30 backdrop-blur-md shadow-lg rounded-2xl border border-white/20 
+                      transition-transform duration-300 ease-out
+                      hover:scale-105 hover:-translate-y-2 hover:translate-x-2
+                      hover:shadow-2xl hover:shadow-blue-200/50">
+        <div className="p-6">
+          <h2 className="text-xl font-bold text-gray-800">Seamless Appointment Booking</h2>
+          <p className="text-gray-600 mt-2">
+            Book appointments easily and receive instant confirmation.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+
+
+
+
+<div> <footer>
+        <div className="max-w-4xl mx-auto">
+          <p className="text-gray-600 text-center">
+            &copy; 2025 QueueSmart. All rights reserved.
+          </p>
+        </div>
+      </footer></div>
+     
     </div>
   )
 }
